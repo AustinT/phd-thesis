@@ -1,0 +1,33 @@
+\section{Discussion}\label{sec:trf:conclusion}
+
+In this chapter we presented two kinds of random features to estimate Tanimoto kernel matrices:
+one based on random hashes and another based on a power series expansion.
+To our knowledge, this is the first investigation into random features for the Tanimoto kernel.
+We theoretically analyse their approximation quality 
+and demonstrate that they can effectively approximate the Tanimoto kernel matrices on
+realistic molecular fingerprint data.
+In the process we discovered a new Tanimoto-like kernel over all of $\mathbb{R}^d$
+which is a promising substitute for the more established $T_{MM}$
+on regression and optimisation tasks.
+
+Despite promising theoretical and experimental results, 
+our random features do have some limitations.
+We found that it was difficult to efficiently vectorize the computation of the random features for $T_{MM}$,
+making them undesirably slow to compute.
+For $T_{DP}$, we were able to exhibit an error bound on the spectral norm which depends on certain choices for the base sketch and sketch dimensions; however, 
+it is unclear whether these choices are optimal in practice.
+Nonetheless,
+in Appendix~\ref{apdx:proof-of-kernel-rank} we prove that \emph{exact} low-rank factorizations of $T_{MM}$ and $T_{DP}$ kernel matrices are not possible;
+this means that follow-up works could reduce but never eliminate the approximation error.
+
+We are most optimistic about the potential of our random features to be applied in Bayesian optimisation,
+in particular by enabling scalable approximate sampling from GP posteriors \citep{wilson2020efficiently}.
+Although we briefly explored this technique in section~\ref{sec:expt-bayesopt},
+in the future it could allow for sample-efficient Bayesian algorithms for complex tasks like Pareto frontier exploration and 
+diverse optimisation using the Bayesian algorithm execution framework \citep{neiswanger2021bayesian}.
+These tasks are highly relevant to real-world drug discovery and there are scant new methods poised
+to solve them in a sample-efficient way.
+We hope that the methods presented in this chapter enable impactful, large-scale applications of the Tanimoto kernel and its two extensions in chemoinformatics.
+
+
+

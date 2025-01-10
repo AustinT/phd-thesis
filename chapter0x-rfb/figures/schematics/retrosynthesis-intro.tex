@@ -1,0 +1,85 @@
+\begin{minipage}{.48\textwidth}
+    \centering
+    
+    \begin{tikzpicture}[node distance=0.5cm]
+          \node[ornode] (target) at (0, 0) {$\targetmol$};
+
+          \node[andnode, below left = of target] (r1) {$r_1$};%
+          \draw[->] (target) -- (r1);
+          \node[ornode, below left = of r1] (ma) {$m_a$};
+          \draw[->] (r1) -- (ma);
+          \node[ornode, below right = of r1] (mb) {$m_b$};
+          \draw[->] (r1) -- (mb);
+          
+          \node[andnode, below right = of target] (r2) {$r_2$};%
+          \draw[->] (target) -- (r2);
+          \draw[->] (r2) -- (mb);
+          \node[ornode, below = of r2] (mc) {$m_c$};
+          \draw[->] (r2) -- (mc);
+          \node[ornode, below right = of r2] (md) {$m_d$};
+          \draw[->] (r2) -- (md);
+          
+          \node[andnode, below = of ma] (r3) {$r_3$};%
+          \draw[->] (ma) -- (r3);
+          \node[ornode, below = of r3] (me) {$m_e$};
+          \draw[->] (r3) -- (me);
+
+          \node[andnode, below left = of mc] (rc1) {$r_4$};
+          \draw[->] (mc) -- (rc1);
+          \node[andnode, below right = of mc] (rc2) {$r_5$};
+          \draw[->] (mc) -- (rc2);
+          \node[ornode, below = of rc1] (mf) {$m_f$};
+          \draw[->] (rc1) -- (mf);
+          \node[ornode, below = of rc2] (mg) {$m_g$};
+          \draw[->] (rc2) -- (mg);
+          \node[draw, dashed, fit=(rc1) (rc2) (mf) (mg), inner sep=6pt, label=below:{expansion of $m_c$}] (box) {};
+    \end{tikzpicture}
+
+    \vfill
+    a) $\gG'$
+\end{minipage}
+\begin{minipage}{.48\textwidth}
+    \centering
+
+    \begin{tikzpicture}[node distance=0.5cm]
+        \node (T1) at (-1,0) {$T_1:$};
+        \node[ornode] (target) at (0, 0) {$\targetmol$};
+        
+        \node (T2) at (-1,-1) {$T_2:$};
+        \node[ornode] (target2) at (0, -1) {$\targetmol$};
+        \node[andnode, right = of target2] (r1) {$r_1$};
+        \draw[->] (target2) -- (r1);
+        \node[ornode, above right = of r1] (ma) {$m_a$};
+        \draw[->] (r1) -- (ma);
+        \node[ornode, right = of r1] (mb) {$m_b$};
+        \draw[->] (r1) -- (mb);
+        
+        \node (T3) at (-1,-2.2) {$T_3:$};
+        \node[ornode] (target3) at (0, -2.2) {$\targetmol$};
+        \node[andnode, right = of target3] (r1b) {$r_1$};
+        \draw[->] (target3) -- (r1b);
+        \node[ornode, right = of r1b] (mb2) {$m_b$};
+        \draw[->] (r1b) -- (mb2);
+        \node[ornode, above right = of mb2, xshift=-.2cm, yshift=-.2cm] (ma2) {$m_a$};
+        \draw[->] (r1b) |- (ma2);
+        \node[andnode, right = of ma2, xshift=-0.2cm] (r3) {$r_3$};
+        \draw[->] (ma2) -- (r3);
+        \node[ornode, right = of r3, xshift=-0.2cm] (me) {$m_e$};
+        \draw[->] (r3) -- (me);
+
+        \node (T4) at (-1,-3.5) {$T_4:$};
+        \node[ornode] (target4) at (0, -3.5) {$\targetmol$};
+        \node[andnode, right = of target4] (r2) {$r_2$};
+        \draw[->] (target4) -- (r2);
+        \node[ornode, right = of r2] (mc) {$m_c$};
+        \draw[->] (r2) -- (mc);
+        \node[ornode, above right = of mc, xshift=-0.2cm, yshift=-0.2cm] (mb) {$m_b$};
+        \draw[->] (r2) |- (mb);
+        \node[ornode, below right = of mc, , xshift=-0.2cm, yshift=+0.2cm] (md) {$m_d$};
+        \draw[->] (r2) |- (md);
+
+    \end{tikzpicture}
+
+    b) $\enumplans_{\targetmol}\left(\gG'\right)$
+
+\end{minipage}

@@ -1,0 +1,24 @@
+\begin{tikzpicture}[node distance=3cm,>={Stealth[scale=2]}]
+    \node (design) [draw, rectangle, minimum width=3cm, minimum height=1cm] {Design};
+    \node (make) [draw, rectangle, minimum width=3cm, minimum height=1cm, right=of design] {Make};
+    \node (test) [draw, rectangle, minimum width=3cm, minimum height=1cm, below=of make] {Test};
+    \node (analyse) [draw, rectangle, minimum width=3cm, minimum height=1cm, below=of design] {Analyse};
+    
+    \draw [->] (design) -- (make);
+    \draw [->] (make) -- (test);
+    \draw [->] (test) -- (analyse);
+    \draw [->] (analyse) -- (design);
+    
+    \draw [decorate, decoration={brace, amplitude=10pt, raise=5pt}, yshift=0pt, xshift=0] 
+    (analyse.south west) -- (design.north west) node [black, midway, xshift=-2cm, align=left] {
+        Chapters~\ref{chapter:lso}, \ref{chapter:adkf}, \ref{chapter:trf}: \\
+        Property \\ prediction \\ models \\
+        (defined \S\ref{sec:background:models}) \\
+    };
+
+    \draw [decorate, decoration={brace, amplitude=10pt, raise=5pt}, rotate=90] 
+    (design.north west) -- (make.north east) node [black, midway, xshift=0, yshift=1cm, align=left] {
+        Chapter~\ref{chapter:rfb}: retrosynthesis \\
+        (defined \S\ref{sec:background:synthesis}) \\
+    };
+\end{tikzpicture}

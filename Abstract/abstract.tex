@@ -1,0 +1,33 @@
+\begin{abstract}
+    Discovering new molecules empowers humanity to solve problems in
+    health, agriculture, energy, and more.
+    The key challenge of molecule discovery is that the space of all possible molecules is vastly
+    larger than the amount of molecules which we can test experimentally with our limited resources.
+    Given this challenge, arguably the best option is to judiciously
+    select which molecules to test based on both our current knowledge
+    and our expectation of what information will be gained from each test.
+
+    In machine learning, this approach is typically called \emph{Bayesian optimisation}
+    and has been studied for many other problems,
+    such as tuning hyperparameters of machine learning models.
+    Although in principle Bayesian optimisation can be straightforwardly
+    applied to the problem of discovering new molecules,
+    the discrete nature of molecules means that new models and algorithms
+    are needed to make Bayesian optimisation work in practice.
+
+    This thesis presents various probabilistic machine learning algorithms
+    which could be used within a Bayesian optimisation loop to discover new molecules.
+    \emph{Latent space optimisation with weighted retraining} (chapter~\ref{chapter:lso})
+    and \emph{adaptive deep kernel fitting with implicit function theorem} (chapter~\ref{chapter:adkf})
+    are both algorithms which use a Gaussian process with a deep neural network kernel function
+    to model the relationship between molecular structure and some property of interest.
+    \emph{Tanimoto random features} (chapter~\ref{chapter:trf}) allows an established
+    cheminformatics model to be applied (approximately) to large datasets.
+    Finally, \emph{retro-fallback} (chapter~\ref{chapter:rfb})
+    uses a novel probabilistic formulation
+    of the retrosynthesis problem to estimate whether a molecule can be synthesized,
+    and thereby determine whether it should be considered by Bayesian optimisation.
+    Together, these algorithms form a suite of tools which could be used
+    to discover new molecules automatically and intelligently.
+
+\end{abstract}

@@ -1,0 +1,64 @@
+
+\chapter{Background: algorithmic tools for molecule discovery}
+\label{chapter:background}
+
+\ifpdf
+    \graphicspath{{chapter02-background/figures}}
+\else
+    \graphicspath{}
+\fi
+
+This chapter provides a general overview of existing approaches to molecule discovery.
+This is an incredibly large field with an enormous body of prior work
+from chemistry, cheminformatics, and machine learning---
+far too much to cover exhaustively.
+Therefore, this chapter primarily aims to introduce the concepts and methods which
+are necessary to understand the later chapters.
+A brief summary of the chapter is provided at the end (\S\ref{sec:background:summary}).
+Readers who are already familiar with the field may wish to skip directly to this summary
+and then proceed to Chapter~\ref{chapter:lso}.
+
+\input{chapter02-background/sections/mols}
+\input{chapter02-background/sections/problems}
+\input{chapter02-background/sections/models}
+\input{chapter02-background/sections/molgen}
+\input{chapter02-background/sections/synthesis}
+\input{chapter02-background/sections/bayesopt}
+
+
+
+\section{Chapter summary and further reading}
+\label{sec:background:summary}
+
+This chapter first introduced molecules and their representations (\S\ref{sec:background:mols}).
+The space of molecules is denoted $\molspace$, while $\amolspace\subseteq\molspace$ denotes
+a space of ``accessible'' molecules.
+Molecules are essentially represented as graphs (with a small amount of standardization).
+These graphs can be post-processed into classical cheminformatics \emph{descriptors} (e.g.\@ molecular weight, number of rings),
+converted into \emph{embeddings} with some kind of neural network,
+represented as a string of characters (e.g.\@ SMILES),
+or represented as a set of fragments called a \emph{fingerprint}.
+
+Molecule discovery is mainly formalized as an optimisation problem (\S\ref{sec:background:molopt}),
+defined in equation~\ref{eqn:defn:molopt}.
+Because predicting properties of molecules is clearly useful for optimisation,
+we also introduce supervised learning as a sub-problem of optimisation (\S\ref{sec:background:supervised learning}).
+
+The next sections introduced key models and algorithms for molecule discovery.
+The most important class is supervised learning models (\S\ref{sec:background:models}),
+particularly \emph{Gaussian processes} (GPs, \S\ref{sec:background:gps}).
+Generative models for molecules (\S\ref{sec:background:molgen}) were briefly introduced,
+as they are used chapter~\ref{chapter:lso}.
+Methods to synthesize molecules (\S\ref{sec:background:synthesis}) were also introduced
+in preparation for chapter~\ref{chapter:rfb},
+with the retro* algorithm being particularly important.
+
+Finally, Bayesian optimisation (\S\ref{sec:background:bayesopt}) was introduced as a general procedure
+which uses models to select experiments to perform.
+Bayesian optimisation serves as a unifying theme for the rest of the thesis,
+as all the methods described in the following chapters (\ref{chapter:lso}--\ref{chapter:rfb})
+can be used as part of a Bayesian optimisation procedure.
+
+We now proceed to the main content of this thesis,
+starting with an end-to-end BO method for molecule optimisation
+in the next chapter.

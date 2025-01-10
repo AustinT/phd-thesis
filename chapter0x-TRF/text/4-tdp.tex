@@ -1,0 +1,262 @@
+\section{Tanimoto dot product kernel and its random features}\label{sec:t-dp}
+
+\citet{ralaivola2005graph} gave a definition for the Tanimoto coefficient involving dot products:
+\begin{equation}\label{eqn:tanidot-kernel}
+    T_{DP}(x, x') = \frac{x\cdot x'}{\|x\|^2+\|x'\|^2-x\cdot x'},
+\end{equation}
+with $T_{DP}(x,x')=1$ when $x,x'=0$. It is easy to check that $T_{DP}(x,x')=T_{MM}(x,x')$ on binary vectors, which was used by \citet{ralaivola2005graph} to prove that $T_{DP}$ is a kernel on the space $\{0,1\}^d$, referencing prior work by \citet{gower1971general}.  However, $T_{DP}$ is not identical to $T_{MM}$ for general inputs $x,x'\in \R_{\ge 0}^d$. Here, we give the first proof that $T_{DP}$ is a positive definite function in $\R^d$ and thus, also a valid kernel in this space.
+
+\begin{theorem}\label{thm:tdp-is-pd}
+    For $x,x'\neq 0$ in $\R^d$, we have
+    \begin{equation}\label{eqn:tanidot-power-series}
+       T_{DP}(x,x')= \sum_{r=1}^\infty \left(x\cdot x'\right)^r \left(\|x\|^2+\|x'\|^2\right)^{-r},
+    \end{equation}
+    where the series is absolutely convergent. The function $T_{DP}$ is a positive definite kernel in $\R^d$.
+\end{theorem}
+
+It has been noticed previously that, unlike $1-T_{MM}$, the function $1-T_{DP}$ is \emph{not} a distance metric on non-binary inputs \citep{kosub2019note}. Indeed, when $d=1$, the inputs $\{1,2,4\}$   violate the triangle inequality. However, we can easily derive a distance metric from $T_{DP}$.
+
+\begin{corollary}\label{thm:tdp-is-metric}
+    $d_{DP}(x,x')=\sqrt{1-T_{DP}(x,x')}$ 
+    corresponds to the RKHS norm of the function $\frac{1}{2}[T_{DP}(x,\cdot)-T_{DP}(x',\cdot)]$
+    and is therefore a valid distance metric on $\mathbb{R}^d$.
+\end{corollary}
+
+Proofs are given in Appendix~\ref{apdx:tdp-is-pd-proof}. These results imply that $T_{DP}$, like $T_{MM}$, is an extension of the set-valued Tanimoto coefficient
+(equation~\ref{eqn:background:tanimoto-for-sets})
+to real vectors and can be used as a substitute for $T_{MM}$ in machine learning algorithms that require a kernel or distance metric. Unlike $T_{MM}$, the kernel $T_{DP}$
+is differentiable everywhere with respect to its inputs.
+It can also be computed in batches using matrix-matrix multiplication,
+allowing for efficient vectorized computation.
+
+We now consider producing a random features approximation to $T_{DP}$ for large-scale applications.
+Motivated by the close relationship between $T_{DP}$ and $T_{MM}$,
+one may be tempted to find a random hash for $T_{DP}$
+and apply the techniques developed in section~\ref{sec:minmax-rf}.
+Unfortunately, we are able to prove that this is not possible.
+\begin{proposition}\label{no random hash for tdp}
+    There exists no random hash function for $T_{DP}$ over non-binary vectors.
+\end{proposition}
+\begin{proof}
+    \citet{charikar2002similarity} proved that if $s(x,x')$ is a similarity function
+    for which there exists a random hash,
+    then $1-s(x,x')$ must satisfy the triangle inequality (see their Lemma 1).
+    Because $1-T_{DP}(x,x')$ does not satisfy the triangle inequality it follows by contradiction
+    that there does not exist a random hash for $T_{DP}$.
+\end{proof}
+
+Therefore, producing random features for $T_{DP}$ will require another approach.
+In the remainder of this section we present a framework to produce random features for $T_{DP}$ by directly approximating its power series
+(equation~\ref{eqn:tanidot-power-series}).
+We first describe a method to produce random features for $(\|x\|^2+\|x'\|^2)^{-r}$ (\S\ref{ssec:prefactor-rf}).
+Then we describe how these features can be combined with existing random features for the polynomial kernel
+to approximate $T_{DP}$'s truncated power series (\S\ref{sec:tdp-rf}--\ref{ssec:implementing tdp rf}).
+
+
+
+\subsection{Random features for the ``prefactor'' \texorpdfstring{$\left(\|x\|^2+\|x'\|^2\right)^{-r}$}{}}\label{ssec:prefactor-rf}
+
+In this section we present a random feature map for the positive definite kernel $\textstyle (x,x')\mapsto (\|x\|^2 + \|x'\|^2)^{-r}$,
+which we will refer to as the \emph{prefactor}.
+We defer all proofs to Appendix~\ref{apdx:prefactor-sketch}.
+We begin with the following lemma, which defines scalar random features for the prefactor:
+
+\begin{lemma}\label{scalar prefactor features lemma}
+    If  $Z\sim\mathrm{Gamma}(s,c)$ (where $c$ is a \emph{rate} parameter), then
+    \begin{align}
+        \varphi_{r,Z}(x) = e^{(1/2-\|x\|^2)Z} Z^{(r-s)/2}\sqrt{c^{-s}e^{(c-1)Z}\Gamma(s)/{\Gamma(r)}}
+    \end{align}
+     is an unbiased scalar random feature for the prefactor $(\|x\|^2 + \|x'\|^2)^{-r}$
+    for all $s,c>0$.
+\end{lemma}
+Although independent copies of $Z$ could be combined to form an $M$-dimensional sketch,
+we instead propose to use a dependent point set $Z_1,\dots,Z_M$ where each element $Z_i$ has a Gamma$(s,c)$ distribution whilst maximally covering the real line. This is a well-established Quasi-Monte Carlo (QMC) technique which generally attains
+lower variance. 
+We define our $M$-dimensional QMC features in the following lemma:
+\begin{lemma}\label{lemma:def QMC prefactor features}
+     Let $\gamma_{s,c}$ be the inverse cumulative distribution function of a $\mathrm{Gamma}(s,c)$ random variable.
+     Fix $M,r\in\mathbb{N}$, $u\in(0,1)$, $c,s>0$ and let $u_i = u + i/M - \lfloor u + i/M\rfloor$ for $i=1,\dots,M$.
+     Define $\phi_{u,r}(x) = (\phi_{u,r,1}(x),\dots,\phi_{u,r,M}(x))$, where:
+     \begin{equation}
+         \phi_{u,r,i}(x) =\frac{1}{\sqrt M}\sqrt{\frac{c^{-s}\Gamma(s)}{\Gamma(r)} } e^{-(\|x\|^2-c/2)\gamma_{s,c}(u_i) }(\gamma_{s,c}(u_i))^{(r-s)/2}\ .
+     \end{equation}
+     If $u\sim\mathcal U(0,1)$ then $\phi_{u,r}(x)$ forms unbiased random features of the prefactor $(\|x\|^2 + \|x'\|^2)^{-r}$.
+\end{lemma}
+Although the random features are unbiased for all $s,c>0$, the value of these parameters will impact the error.
+We show that if $s,c$ are suitably tuned, then the relative error can be bounded:
+ \begin{lemma} \label{QMC error}
+Let $x^{(1)},\dots,x^{(n)}\in \R^d$ with $\frac{\min_i \|x^{(i)}\|^2}{\max_i \|x^{(i)}\|^2} \ge \zeta$, and fix $u\in[0,1]$. Define the relative error
+\begin{align}
+    \label{error matrix}
+E_{i,j} = \frac{   \phi_{u,r}(  x^{(i)} )\cdot \phi_{u,r}( x^{(j)} ) - (\| x^{(i)} \| ^2+ \| x^{(j)} \| ^2)^{-r} }{( \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2)^{-r}} .
+\end{align}
+If $c = 2\zeta^2$, $s=r\zeta$, then 
+for some constant $C$ independent of $r$
+this error satisfies, 
+\begin{align}
+\max_{1\le i,j \le n} | E_{i,j}| \leq \frac{2}{M} \frac{\Gamma(r\zeta)\zeta^{-r\zeta}}{\Gamma(r)} (r/e)^{r(\zeta-1)} (1.3)^r \leq C (M\zeta)^{-1}.
+\end{align}
+\end{lemma}
+
+Together, these lemmas suggest random features for the prefactor can be created
+by first estimating $\zeta$ (the minimum ratio of norms of input vectors),
+then using the random features from \Cref{lemma:def QMC prefactor features} with the
+values of $s,c$ specified in \Cref{QMC error}.
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{A framework to produce random features for \texorpdfstring{$T_{DP}$}{TDP}}
+\label{sec:tdp-rf}
+
+There are straightforward rules for producing random features for sums and products of kernels whose individual random features are known \citep[{\S}2.6.2]{duvenaud_2014}.
+Random features for kernels $k_1,k_2$ can be \emph{concatenated} (denoted $\oplus$) to form random features for the sum kernel $k_1+k_2$,
+while their \emph{tensor product}\footnote{
+For two vectors $x\in\R^{d_1}$ and $y\in\R^{d_2}$, define the tensor product $x\otimes y = \text{vec}(xy^T) \in \R^{d_1d_2}$.
+} (denoted $\otimes$)
+forms random features for the product kernel $k_1\times k_2$.
+Our strategy to produce features for $T_{DP}$ is
+to combine random features for the ``prefactor'' (presented in \cref{ssec:prefactor-rf})
+with random features for the polynomial kernel to produce random features for $T_{DP}$'s power series (equation~\ref{eqn:tanidot-power-series}) truncated at $R$ terms.
+
+Fix $R\in\mathbb{N}$, and for $r=1,\ldots,R$, let $\phi_r$ be a $m_r$-dimensional random features map for the prefactor
+$\textstyle (\|x\|^2 + \|x'\|^2)^{-r}$ and let $\psi_r$ be a $m'_r$-dimensional random features map for
+$\left(x\cdot x'\right)^r$. The function:
+\begin{equation}\label{naive tensor product rfs}
+    \tilde\Phi_R(x) = \oplus_{r=1}^R \left[\phi_r(x) \otimes \psi_r(x)\right]
+\end{equation}
+is therefore a random feature estimate for $T_{DP}$'s power series, truncated at $R$ terms.
+Unfortunately, these random features have dimension 
+$M=\sum_{r=1}^R m_r m'_r$
+which depends on the \emph{product} of the random features dimension of $\phi_r$ and $\psi_r$. Furthermore, the dimension $m_r'$ of the random features $\psi_r$ required to approximate the polynomial kernel $(x\cdot x')^r$ with good accuracy can scale poorly with $r$.
+For even modest values of $m_r,m'_r$ the resulting value of $M$ will likely be prohibitively large.
+
+To remedy this, we turn to recent works which propose powerful linear maps
+to approximate tensor products
+with a lower-dimensional vector.
+Assuming $x^{(1)},y^{(1)}\in\R^{d_1}$ and $x^{(2)},y^{(2)}\in\R^{d_2}$,
+these maps are effectively random matrices $\Pi\in \R^{m\times (d_1d_2)}$,
+which exhibit a \emph{subspace embedding property} whereby $[\Pi(x^{(1)}\otimes x^{(2)})]\cdot[\Pi(y^{(1)}\otimes y^{(2)})]$ concentrates sharply around $(x^{(1)}\otimes x^{(2)})\cdot(y^{(1)}\otimes y^{(2)})$.
+Critically, the product $\Pi(x^{(1)}\otimes x^{(2)})$ can be computed \emph{without} instantiating either matrix $\Pi$ or the tensor product $x^{(1)}\otimes x^{(2)}$.
+Examples of such methods include
+\textsc{TensorSketch} and \textsc{TensorSRHT}
+\citep{pagh2013compressed,pham2013fast, ahle2020oblivious},
+but for generality we will simply refer to these methods as \textsc{Sketch}.
+Defining a series of sketches $\textsc{Sketch}_r:\R^{m_r}\times \R^{m'_r}\mapsto \R^{\tilde{m}_r}$
+we can modify $\tilde\Phi_R$ from equation~\ref{naive tensor product rfs} into:
+\begin{equation}\label{sketch tensor product rfs}
+    \Phi_R(x) = \oplus_{r=1}^R \textsc{Sketch}_r\left[\phi_r(x),  \psi_r(x)\right]
+\end{equation}
+which has output dimension $M=\sum_{r=1}^R \tilde{m}_r$, i.e.\@ without any pathological dependencies on the dimensions of $\phi_r(x),\psi_r(x)$.
+
+
+\subsection{Methods to correct the bias of Tanimoto dot product random features}
+\label{apdx:bias-correction}
+
+We begin by noting that when $x,x'\in\R_{\ge 0}^d$, $x\cdot x'\ge 0$, and therefore, the power series
+\begin{align*}
+T_{DP}(x,x')=\sum_{r=1}^\infty (x\cdot x')^r(\|x\|^2+\|x'\|^2)^{-r}
+\end{align*}
+is monotone. Therefore, if we use an unbiased sketch for the truncated series 
+\begin{align*}
+\sum_{r=1}^R (x\cdot x')^r(\|x\|^2+\|x'\|^2)^{-r}
+\end{align*}
+as the one constructed in Section \ref{sec:tdp-rf}, the final sketch will be biased \emph{downward}
+for all $x,x'\in\R_{\ge 0}^d$, i.e.,
+\begin{align*}
+\E(\Phi(x)\cdot\Phi(x'))< T_{DP}(x,x') \ .
+\end{align*}
+Below we introduce two strategies to remedy this issue.
+
+\subsubsection{Bias correction strategy 1: normalize the features}
+
+As the kernel satisfies $T_{DP}(x,x)=1$ for all $x\in\R^d$, one possible correction is to \emph{normalize} the sketch to obtain
+\begin{align*}
+\tilde \Phi(x) = \frac{\Phi(x)}{\|\Phi(x)\|}.
+\end{align*}
+This remains an oblivious sketch, and ensures that the diagonal of the kernel matrix is estimated exactly, at the expense of possibly introducing some bias in off-diagonal elements of $K$.
+
+\subsubsection{Bias correction strategy 2: sketch the residual}
+
+To simplify the algebra,
+let $t_{x,y}=\frac{x\cdot y}{\|x\|^2 + \|y\|^2}$.
+The power series for $T_{DP}$ can then be re-written as:
+\begin{align}
+    T_{DP}(x,y) &= \sum_{r=1}^\infty \left(t_{x,y}\right)^r \nonumber\\
+    &= \sum_{r=1}^{R} \left(t_{x,y}\right)^r + \left(t_{x,y}\right)^{R+1} + \sum_{r=R+2}^{\infty} \left(t_{x,y}\right)^r \nonumber\\
+    &= \sum_{r=1}^{R} \left(t_{x,y}\right)^r + \left(t_{x,y}\right)^{R+1} + \left(t_{x,y}\right)^{R+1}\sum_{r=1}^{\infty} \left(t_{x,y}\right)^r \nonumber\\
+    &= \underbrace{\sum_{r=1}^{R} \left(t_{x,y}\right)^r}_{k^{R}} + \underbrace{\left(t_{x,y}\right)^{R+1} \left(1 + T_{DP}(x,y)\right)}_{\text{truncation error}}
+\end{align}
+Critically, the truncation error can be written in terms of the kernel value itself, without any infinite sums.
+This enables a simple procedure to generate random features for \emph{both} the truncated
+power series and the remainder:
+\begin{enumerate}
+    \item Compute and store $\Phi(x)$ 
+        as random features for the truncated kernel $k^{R}$.
+    \item  Concatenate a single 1 onto $\Phi(x)$
+        to produce features $\Phi_{+1}(x) = (1,\Phi(x))$ which approximate the kernel $1+k^{R}$
+        using only a single extra dimension.
+        Treat this as approximate random features for the kernel $1+k$.
+    \item Compute random features $\Phi_{r+1}(x)$ for $t_{x,y}^{R+1}$.
+    \item Apply \textsc{Sketch} to the tensor product $\Phi_{r+1}(x)\otimes \Phi_{+1}(x)$ to obtain $\Delta(x)$,
+        which approximates random features of the truncation error 
+        $t_{x,y}^{R+1}(1+T_{DP}(x,y))$.
+    \item Concatenate the random features $\Phi(x)$ and $\Delta(x)$, to obtain bias corrected random features $\Phi_\text{bc}(x)=\Phi\oplus \Delta(x)$.
+\end{enumerate}
+
+Overall, these random features are essentially a concatenation of
+the random features for the truncated power series
+with an additional random feature estimate of the truncation error,
+which is formed using both the random features for the first $R$ terms
+and the random features for the $(R+1)$th term.
+A nice property of the procedure above is that it \emph{re-uses}
+the random features $\Phi(x)$ to estimate the error.
+
+
+\subsection{Implementing the random features}\label{ssec:implementing tdp rf}
+
+Instantiating the random features from the previous subsection (\ref{sketch tensor product rfs})
+requires making concrete choices for $R$, $\textsc{Sketch}_r,m_r,m'_r,\tilde{m}_r,\phi_r,\psi_r$ for all $r$,
+and choosing a bias correction technique.
+There are many reasonable choices for $\textsc{Sketch}_r$, such as
+\textsc{TensorSketch} \citep{pham2013fast}
+and \textsc{TensorSRHT} \citep{ahle2020oblivious}.
+These sketches generally allow $m_r,m'_r,\tilde{m}_r$ to be chosen freely
+(although naturally error will increase as $\tilde{m}_r$ decreases).
+Many of these sketches can also be used as random features for the polynomial kernel $\psi_r$ \citep{wacker2022improved},
+either directly or as part of more complex algorithms like  \textsc{TreeSketch} \citep{ahle2020oblivious}
+or complex-to-real sketches \citep{wacker2023complextoreal}.
+The QMC random features from section~\ref{ssec:prefactor-rf} can be used for the prefactor $\phi_r$,
+with the parameters $s,c$ chosen based on the anticipated norms of the input vectors.
+
+The only remaining inputs are $R$ (the number of power series terms to approximate)
+and $\tilde{m}_1,\ldots,\tilde{m}_R$ (how many random features to use for each term).
+Assuming a fixed dimension $M$ for the final random features,
+this choice involves a bias variance trade-off,
+as a higher value of $R$ will reduce bias but require each term in the power series
+to have fewer features, thereby increasing variance.
+Intuitively, because the terms of the power series decrease monotonically
+the variance of terms for small $r$ is likely to dominate the overall variance,
+and therefore we surmise that a \emph{decreasing} sequence for $\{\tilde{m}_r\}_{r=1}^R$
+will be the best choice.
+Ultimately however we do not have theoretical results to dictate this choice in practice.
+We will evaluate these choices empirically in section~\ref{sec:trf:experiments}.
+
+
+
+
+
+
+
+
+
+
+

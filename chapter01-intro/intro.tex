@@ -1,0 +1,287 @@
+
+\chapter{Introduction}
+\label{chapter:intro}
+
+\ifpdf
+    \graphicspath{{chapter01-intro/figures}}
+\else
+    \graphicspath{}
+\fi
+
+Despite limited time, resources, and ingenuity, humanity has discovered molecules
+whose properties give us extraordinary control over its environment.
+Penicillin transformed bacterial infections from a deadly disease into an inconvenience.
+Pesticides like DDT have eradicated malaria from entire continents.
+Birth control pills have given women unprecedented control over their own reproduction.
+Optimistically, still yet-to-be discovered molecules will cure cancer,
+enable a worldwide transition away from fossil fuels,
+or slow human ageing.
+
+Hopefully these examples make a convincing case
+that molecule discovery is a worthwhile endeavour.
+Historically, many important molecules have been discovered
+\emph{serendipitously}---
+essentially by accident.\footnote{
+    A great book on serendipitous discoveries in medicine is
+    \emph{Happy Accidents: Serendipity in Modern Medical Breakthroughs}
+    by Morton Meyers.
+    He describes serendipity as not simply ``luck'',
+    but ``unexpected observation seized upon and turned to advantage by the prepared mind.''
+    In other words, partially luck, but partially preparedness.
+}
+Although such serendipitous discoveries will doubtlessly continue in the future,
+methods to discover molecules \emph{intentionally} and \emph{systematically} are clearly desirable.
+We now consider how this may be achieved, starting with some definitions.
+
+\section{Definition and challenges of ``molecule discovery''}
+
+\subsection{What are molecules?}
+\label{sec:what are molecules}
+
+Although this question may seem overly pedantic,
+there are many useful substances like metal alloys which
+are not normally considered to be ``molecules''.
+A definition of molecules is therefore helpful to understand the scope of this thesis.
+Zumdahl's classic chemistry textbook \citep[page 52]{zumdahl2006chemistry}
+provides the following explanation of a molecule:
+
+\begin{quotation}
+    The forces that hold atoms together in compounds are called \textbf{chemical bonds}.
+    One way that atoms can form bonds is by \textit{sharing electrons}.
+    These bonds are called \textbf{covalent bonds}, and the resulting collection of atoms is called a \textbf{molecule}.
+\end{quotation}
+
+Therefore, in this thesis we will simply consider to be a molecule
+\emph{to be a collection of atoms connected by bonds}.\footnote{
+    Of course, bonds themselves are also an abstraction (as anyone who has seen my ``bonds do not exist'' T-shirt will know).
+    \citet[page 348]{zumdahl2006chemistry} provide some additional thoughts on this:
+    \begin{quotation}
+        It is important to note that the bond concept is a human invention.
+        Bonds provide a method for dividing up the energy evolved when a stable molecule is formed from its component atoms.
+        Thus in this context a bond represents a quantity of energy obtained from the overall molecular energy of stabilization
+        in a rather arbitrary way. This is not to say that the concept of individual bonds is a bad idea.
+        In fact, the modern concept of the chemical bond, conceived by the American chemists G.\@ N.\@ Lewis
+        and Linus Pauling, is one of the most useful ideas chemists have ever developed.
+    \end{quotation}
+}
+This definition is of course imperfect,
+but undeniably includes most small molecule drugs and peptides,
+which are the main envisioned application of the algorithms in this thesis.
+Ultimately, this definition motivates representing molecules as mathematical graphs (\S\ref{sec:background:mols}).
+
+\subsection{What is ``discovery''?}
+\label{sec:intro:what is discovery}
+
+Again, this question may seem pedantic,
+but exactly what constitutes ``discovery'' is less clear than it seems.
+For example, there are some molecules whose properties were known and exploited by ancient civilizations,
+but were only chemically identified in the past few centuries (e.g.\@ many plant-based dyes).
+Another situation worth considering is if a certain molecule is ``predicted'' to exist or to have certain properties,
+but is not synthesized until much later.
+In both of these cases, what should be considered the ``discovery'' is not clear.
+
+In this thesis we will adopt the pragmatic definition that discovery is
+\emph{both} the identification of a molecule \emph{and} the measurement of some property of interest.
+In particular, because this definition requires both the molecule and a property to be known,
+it makes sense to describe the relationship between the two as a mathematical function,
+allowing molecule discovery to later be formalized as optimisation
+(\S\ref{sec:background:problems}).
+
+\subsection{What makes molecule discovery challenging?}
+
+Discovering molecules is essentially a ``needle in a haystack'' problem.
+There are many potential molecules to test (some estimates suggest $10^{60}$ \citep{bohacek1996art}),
+but typically only a miniscule fraction of these molecules will possess any particular
+property of interest (e.g.\@ curing bacterial infections).
+This challenge is furthered by the fact that properties of interest
+(e.g.\@ therapeutic outcomes)
+are challenging to predict accurately and expensive to measure experimentally.
+This limits the amount of information that can be acquired during the discovery process.
+
+These factors make exhaustively testing every molecule infeasible
+and the simple strategy of random testing ineffective.
+To discover molecules effectively,
+one must clearly have some knowledge about which molecules are likely to have the desired properties,
+then choose which molecules to test very carefully in order to not ``waste'' any experiments.
+Even with a lot of expert knowledge and large research budgets,
+molecule discovery campaigns still fail routinely
+(the statistic ``over 90\% of drug discovery projects fail'' is often cited,
+e.g.\@ by \citet{hay2014clinical}).
+
+\section{Why consider \emph{probabilistic machine learning}?}
+
+Although computers may not know any more about chemistry than expert humans,
+they are better at processing information, which is important as chemistry enters the ``big data'' era.
+Modern high-throughput screening approaches can quickly produce thousands of measurements,
+and ``virtual libraries'' can contain up to $10^{20}$ molecules \citep{hoffmann2019next}:
+numbers far too large for even the smartest human to fully process and analyse.
+Just being able to comprehensively consider all the data and all options for subsequent experiments
+makes computer algorithms an important tool in molecule discovery.
+
+Historically, the most popular class of algorithms used in molecular discovery has been physics-based models,
+including docking \citep{pinzi2019molecular}, molecular dynamics \citep{durrant2011molecular},
+and density-functional theory \citep{jones2015density}.
+Such approaches are highly appealing to scientists as they are principled,
+interpretable, and generalizable.
+However, within these methods there is always a trade-off between accuracy and computational cost,
+with the most accurate simulations being very expensive
+(often taking days or weeks to run on large supercomputers).
+Even given immense computational resources, the most accurate methods still make simplifying
+assumptions and therefore will never perfectly match reality.
+Ultimately, physics-based algorithms can be thought of as producing predictions ranging from
+``cheap but very inaccurate'' to ``expensive but still imperfect.''
+Chemists, understandably, find this trade-off frustrating and unsatisfactory.
+
+
+With this backdrop, abandoning first-principles and simply ``curve fitting'' observed data emerges as a potentially appealing option.
+We will broadly refer to all such techniques as \emph{machine learning}.
+However, the algorithms in this thesis can all be categorized as \emph{probabilistic} machine learning algorithms:
+this means they possess an interpretation as performing statistical inference over random variables,
+for example the outcome of a measurement in a laboratory.
+The use of randomness may seem odd to some readers, especially in the context of chemistry
+where most quantities of interest are physicochemical properties
+which are \emph{not} random.
+However, randomness is a useful tool to model \emph{uncertainty}.
+Since physicochemical properties are measured using imperfect equipment,
+there is always uncertainty about quantities that one has measured,
+and of course there is even more uncertainty about quantities that one has \emph{not} measured.
+Estimates of uncertainty give ``confidence'' in the outcome of experiments before they are performed,
+and are therefore incredibly useful for decision-making.
+
+Aside from uncertainty, designing machine learning algorithms with a
+probabilistic interpretation provides a principled framework for developing algorithms
+rather than simply chaining together many steps in an \textit{ad-hoc} way.
+This gives probabilistic machine learning algorithms an interpretable flair
+which many scientists find appealing.
+
+\section{Contributions of thesis}
+\label{sec:intro:contributions}
+
+This thesis describes several novel probabilistic machine learning algorithms 
+applicable to molecule discovery.
+There algorithms can predict properties of molecules,
+generate molecules with desirable properties,
+and produce synthesis plans for novel molecules.
+One way to view these algorithms at a high level is as tools to aid in the
+``design-make-test-analyse'' (DMTA) cycle of molecule discovery,
+which is illustrated in Figure~\ref{fig:dmta-schematic}.
+The steps in DMTA can be understood as follows:
+\begin{enumerate}
+    \item \textbf{Design}:
+        choosing which molecule to test (e.g.\@ drawing the desired chemical structure).
+    \item \textbf{Make}:
+        physically creating the molecule (or just purchasing it).
+        This step can be skipped if the testing is entirely computational.
+    \item \textbf{Test}: make some sort of measurement of the molecule.
+    \item \textbf{Analyse}: interpret the results of this measurement alongside previous measurements.
+        Generally the goal is to make a decision based on the results;
+        therefore this step is often tightly coupled with the ``design'' step.
+\end{enumerate}
+
+\begin{figure}[t]
+    \input{chapter01-intro/figures/tikz-DMTA}
+    \caption[Schematic of the design-make-test-analyse (DMTA) cycle]{
+        Schematic of the design-make-test-analyse (DMTA) cycle for molecule discovery
+        and how the algorithms presented in this thesis fit into it.
+    } 
+    \label{fig:dmta-schematic}
+\end{figure}
+
+Each content chapter of this thesis describes a specific algorithm which has been
+published as a conference paper in a highly-regarded machine learning conference:
+\begin{itemize}
+    \item Chapter~\ref{chapter:lso}
+        describes a method to train a generative model on weighted data
+        to produce molecules with desirable properties.
+        Unlike previous methods in this class,
+        this method is able to ``zoom in'' on promising regions of molecule space.
+        Its contents formed the paper
+        \emph{Sample-Efficient optimization in the Latent Space of Deep Generative Models via Weighted Retraining},
+        published in Neural Information Processing Systems (NeurIPS) 2020
+        \citep{tripp2020sample}.
+    \item Chapter~\ref{chapter:adkf}
+        describes a method to fit Gaussian process models whose kernels contain neural networks with millions of parameters.
+        Its noteworthy feature is to avoid overfitting and underfitting issues experienced by previous methods.
+        Its contents formed the paper
+        \emph{Meta-learning Adaptive Deep Kernel Gaussian Processes for Molecular Property Prediction},
+        published in the International Conference on Learning Representations (ICLR) 2023
+        \citep{chen2022meta}.
+    \item Chapter~\ref{chapter:trf}
+        describes an approximation to scale Tanimoto-kernel Gaussian process models to large datasets.
+        Despite the Tanimoto kernel being a popular choice for molecular property prediction,
+        no previous work had proposed a random feature approximation for it.
+        Its contents formed the paper
+        \emph{Tanimoto Random Features for Scalable Molecular Machine Learning},
+        published in NeurIPS 2023
+        \citep{tripp2023tanimoto}.
+    \item Chapter~\ref{chapter:rfb}
+        describes a novel probabilistic formulation of synthesizing molecules.
+        Unlike previous algorithms, this method is able to handle uncertainty
+        about reaction outcomes in a principled way.
+        Its contents formed the paper
+        \emph{Retro-fallback: retrosynthetic planning in an uncertain world},
+        published in ICLR 2024 \citep{tripp2023retrofallback}.
+\end{itemize}
+
+The relationship between these algorithms and the DMTA cycle is illustrated in Figure~\ref{fig:dmta-schematic}.
+The algorithms in chapters~\ref{chapter:lso}--\ref{chapter:trf} are used to propose molecules to test
+based on the results of previous tests,
+either by directly proposing molecules to test,
+or simply providing probabilistic predictions predicting what the results of testing a molecule could be.
+They can be viewed as jointly performing the ``analysis'' and ``design'' steps of DMTA.
+In contrast, chapter~\ref{chapter:rfb} describes a novel algorithm to propose synthesis plans
+for molecules which have been identified as desirable, using the formalism of ``retrosynthesis''.
+It is primarily useful for the ``make'' step (since in practice this is often just executing a synthesis),
+but also has implications for the ``design'' step as it can be used to propose molecules which are easier to synthesize.
+All these algorithms can be incorporated into a ``Bayesian optimisation''
+approach to DMTA, which will be described in \S\ref{sec:background:bayesopt}.
+
+The work presented in this thesis is not all the work done during my PhD.
+I chose only to include works which propose new probabilistic machine learning algorithms
+for molecule discovery, and where I was also either the first author or made significant contributions.
+However, I also contributed to the following papers:
+\begin{itemize}
+    \item \href{https://github.com/dockstring/dockstring}{\textsc{DockString}},
+        a software package and benchmark suite based on molecular docking,
+        published in the Journal of Chemical Information and Modeling  %
+        \citep{ortegon2021dockstring}.
+    \item A reinforcement learning algorithm for retrosynthesis \citep{liu2023pdvn},
+        published in ICML 2023.
+    \item An efficient approximate inference method for Gaussian processes,
+        published in ICLR 2024 \citep{lin2024stochastic}.
+    \item The \href{https://github.com/leojklarner/gauche}{GAUCHE} software library for Gaussian processes over molecules \citep{griffiths2024gauche},
+        published in NeurIPS 2023.
+    \item The \href{https://github.com/microsoft/syntheseus/}{\texttt{syntheseus}} software library for retrosynthesis,
+        currently on arXiv \citep{maziarz2023re}.
+\end{itemize}
+
+\section{Guide to reading this thesis}
+
+``Algorithms for molecule discovery'' is an inherently interdisciplinary topic,
+and I hope this thesis can be useful to a diverse audience of readers.
+However, since the content is formed from machine learning conference papers,
+it is primarily written with a machine learning audience in mind.
+Each content chapter describes one conference paper,
+and the contents of each chapter are largely identical to that of the corresponding paper
+except for the following changes.
+
+First, the standard 8--10 page limit of machine learning conference papers is not particularly conducive
+to lengthy explanations of background materials, leading to very terse introductions of key concepts
+like Gaussian process models.
+I have moved much of this material into a dedicated background chapter (Chapter~\ref{chapter:background})
+and elaborated upon the explanations.
+
+Second, the introduction to each conference paper contains a few paragraphs motivating machine learning for molecules.
+As this content is largely redundant given this chapter and Chapter~\ref{chapter:background},
+I have therefore changed section~1 of each chapter from ``introduction'' to ``motivation''
+and replaced the content with a more focused and nuanced motivation for each method.
+Third, I added some content to the chapters which was originally relegated to the appendix of the corresponding conference papers.
+Finally, since this thesis is written with the benefit of hindsight I have added a final ``retrospective''
+section at the end of each chapter with additional analysis.
+
+Importantly, despite these changes this thesis includes no new \emph{technical} content
+beyond what is in the corresponding papers.
+Readers who are already familiar with any of the conference papers from this thesis can
+simply read section~1
+of the corresponding chapter for additional motivation
+then skip directly to the final section for some retrospective analysis.

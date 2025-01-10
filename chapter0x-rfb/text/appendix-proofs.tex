@@ -1,0 +1,155 @@
+\section{Proofs and Theoretical Results}\label{appendix:proofs}
+
+This appendix contains proofs of theoretical results from the chapter.
+
+\subsection{Proof of Theorem~\ref{thm:success prob is NP hard}}\label{appendix:proofs:succ-prob-np-hard}
+
+Theorem~\ref{thm:success prob is NP hard} is a corollary of the following theorem,
+which we prove below.
+
+\begin{theorem}\label{thm:success prob non-zero NP hard}
+    Unless $P=NP$, there does not exist an algorithm to determine
+    {\color{blue}whether $\mathrm{SSP}(\enumplans_{\targetmol}(\gG') ; \xi_f, \xi_b) > 0$}
+    for arbitrary $\xi_f,\xi_b$ whose time complexity grows polynomially with the number of nodes
+    in $\gG'$.
+\end{theorem}
+Note that Theorem~\ref{thm:success prob non-zero NP hard}
+is similar to but distinct from Theorem~\ref{thm:success prob is NP hard}.
+The difference ({\color{blue}highlighted})
+is that Theorem~\ref{thm:success prob is NP hard}
+is about the difficulty of computing SSP,
+while Theorem~\ref{thm:success prob non-zero NP hard}
+is only about the difficulty of determining whether or not SSP is 0.
+We now state a proof of Theorem~\ref{thm:success prob non-zero NP hard}:
+\begin{proof}
+We will show a reduction from the Boolean 3-Satisfiability Problem (3-SAT) to the problem of determining whether SSP is non-zero. As 3-SAT is known to be NP-hard \citep{Karp1972}, this will imply the latter is also NP-hard, completing the proof.
+
+To construct the reduction, assume an instance $I$ of 3-SAT with $n$ variables $x_1$, \ldots, $x_n$, and $m$ clauses $c_1$, \ldots, $c_m$, each $c_j$ consisting of three literals (where a literal is either a variable or its negation).
+We will construct an AND-OR graph $\gG(I)$ with size $\mathcal O(n + m)$, alongside with distributions $\xi_f(I)$~and $\xi_b(I)$,
+such that the SSP in the constructed instance is non-zero if and only if $I$ is satisfiable.
+
+In our construction we first set $\xi_f \equiv 1$, i.e.\@ assume all reactions described below are always feasible.
+
+We then construct a set $P$ of $2n$ potentially buyable molecules,
+corresponding to variables $x_i$ as well as their negations $\neg x_i$;
+to simplify notation, we will refer to these molecules as $x_i$ or $\neg x_i$.
+We then set $\xi_b(I)$ to a uniform distribution over all subsets $S \subseteq P$ such that $|S \cap \{x_i, \neg x_i\}| = 1$
+for all $i$;
+in other words, either $x_i$ or $\neg x_i$ can be bought, but never both at the same time.
+Note that with this construction it is easy to support all necessary operations on $\xi_b$, such as (conditional) sampling or computing marginals.
+
+It remains to translate $I$ to $\gG(I)$ in a way that encodes the clauses $c_j$. 
+We start by creating a root OR-node $r$, with a single AND-node child $r'$.
+Under $r'$ we build $m$ OR-node children, corresponding to clauses $c_j$; again, we refer to these nodes as $c_j$ for simplicity.
+Finally, for each $c_j$, we attach $3$ children, corresponding to the literals in $c_j$.
+Intuitively these $3$ children would map to three molecules from the potentially buyable set $P$, but formally the children of $c_j$ should be AND-nodes (while $P$ contains molecules, i.e.\@ OR-nodes); however, this can be resolved by adding dummy single-reactant reaction nodes.
+
+To see that the reduction is valid, first note that $r$ is synthesizable only if all $c_j$ are, which reflects the fact that $I$ is a binary AND of clauses $c_j$. Moreover, each $c_j$ is synthesizable if at least one of its $3$ children is, which translates to at least one of the literals being satisfied. Our construction of $\xi_b$ allows any setting of variables $x_i$ as long as it's consistent with negations $\neg x_i$. Taken together, this means the SSP for $\gG(I)$ is non-zero if and only if there exists an assignment of variables $x_i$ that satisfies $I$, and thus the reduction is sound.
+\end{proof}
+
+\begin{corollary}
+If a polynomial time algorithm did exist to compute the exact value of
+$\mathrm{SSP}(\enumplans_{\targetmol}(\gG');\gG',\xi_f,\xi_b)$,
+this algorithm would clearly also determine whether
+$$\mathrm{SSP}(\enumplans_{\targetmol}(\gG');\gG',\xi_f,\xi_b)>0$$
+in polynomial time,
+violating Theorem~\ref{thm:success prob non-zero NP hard}.
+This proves Theorem~\ref{thm:success prob is NP hard}.
+\end{corollary}
+
+\subsection{
+    Computing
+    \texorpdfstring{$\rs(\cdot)$, $\psi(\cdot)$ and $\rho(\cdot)$}{s, ψ and ρ}
+    polynomial time
+}
+\label{appendix:proofs:polynomial-dp-updates}
+
+Here, we state provide proofs that these quantities can be computed in polynomial time.
+These proofs require the following assumption:
+\begin{assumption}[Bound on children size]
+\label{assumption:bound on graph edges}
+    Assume 
+    \begin{equation*}
+      |\children_\gG(m)|\leq K,\quad
+      |\children_\gG(m)|\leq L, \quad
+      |\parents_\gG(m)|\leq J
+    \end{equation*}
+    for all molecules $m$ and reactions $r$,
+    where $J,K,L\in\mathbb N$ are fixed constants.
+\end{assumption}
+This assumption essentially ensures that even as the retrosynthesis graph grows,
+the number of neighbours for each node does not grow.
+
+Now we state our main results.
+\begin{lemma}[$\rs$ and $\psi$ in polynomial time]
+\label{thm:s and psi in poly time}
+    There exists an algorithm to calculate \\
+    $\rs(n;\gG',f,b)$ and $\psi(n;\gG',f,b,h)$
+    for every node $n\in\gG'$ whose time
+    complexity is polynomial in the number of nodes in $\gG'$.
+\end{lemma}
+\begin{proof}
+    Section~\ref{appendix:s,psi,rho min cost}
+    showed how $-\log{\rs(\cdot)}$
+    and $-\log{\psi(\cdot)}$
+    correspond exactly cost equations for minimum-cost synthesis plans,
+    as studied for the AO* algorithm.
+    \citep{chakrabarti1994algorithms} provides two algorithms,
+    \texttt{Iterative\_revise}
+    and \texttt{REV*}
+    whose runtime is both worst-case polynomial in the number of nodes
+    (assuming a number of edges which does not grow more than linearly
+    with the number of nodes,
+    which assumption~\ref{assumption:bound on graph edges} guarantees).
+\end{proof}
+
+The following lemma shows that,
+with a bit of algebraic manipulation,
+the same strategy can be applied to $\rho$.
+\begin{lemma}
+    There exists an algorithm to calculate
+    $\rho(n;\gG',f,b)$
+    for every node $n\in\gG'$ whose time
+    complexity is polynomial in the number of nodes in $\gG'$.
+\end{lemma}
+\begin{proof}
+    To do this, first compute $\psi(\cdot)$
+    for every node
+    (which lemma~\ref{thm:s and psi in poly time} states can be done in polynomial time).
+    Next, define the function
+    $\eta(\cdot)=\log{\frac{\psi(\targetmol;\gG',f,b,h)}{\rho(\cdot;\gG',f,b,h)}}$.
+    This is essentially a constant transformation of $\rho(\cdot)$
+    at each point (since $\psi(\targetmol;\gG',f,b,h)$ is just a constant).
+    Therefore $\eta$ has the analytical solution:
+    \begin{align}
+        \eta(m;\gG',f,b,h) &= \begin{cases}
+        0 & m=\targetmol \\ 
+        \min_{r\in\parents_{\gG'}(m)}\eta(r;\gG',f,b,h) & \text{all other }m \\
+        \end{cases}  \\
+        \eta(r;\gG',f,b,h) &= \begin{cases}
+            \infty & \psi(r;\gG',f,b,h) = 0 \\
+            \eta(m';\gG',f,b,h) + \log{\frac{\psi(m';\gG',f,b,h)}{\psi(r;\gG',f,b,h)}} & \text{otherwise}, m'\in\parents_{\gG'}(r)\ .
+        \end{cases}
+    \end{align}
+
+    Now, define the graph $\tilde\gG'$ by flipping the direction of all edges
+    in $\gG'$ (so all parents become children, and vice versa).
+    $\eta$ can be re-written as:
+    \begin{align}
+        \eta(m;\tilde\gG',f,b,h) &= \begin{cases}
+        0 & m=\targetmol \\ 
+        \min_{r\in\children_{\tilde\gG'}(m)}\eta(r;\tilde\gG',f,b,h) & \text{all other }m \\
+        \end{cases}  \\
+        \eta(r;\tilde\gG',f,b,h) &= \begin{cases}
+            \infty & \psi(r;\tilde\gG',f,b,h) = 0 \\
+            \sum_{m'\in\children_{\tilde\gG'}(r)}
+                \eta(m';\tilde\gG',f,b,h) + \log{\frac{\psi(m';\gG',f,b,h)}{\psi(r;\gG',f,b,h)}} & \psi(r;\gG',f,b,h) < \infty \ , \label{eqn:eta tilde for reactions}
+        \end{cases}
+    \end{align}
+    where the sum in equation~\ref{eqn:eta tilde for reactions} was introduced because reactions in $\gG'$
+    have only one parent.
+    These equations correspond precisely to minimum cost equations from AO*,
+    allowing algorithms from \citet{chakrabarti1994algorithms} to be applied.
+    $\rho$ can then be straightforwardly recovered from $\eta$.
+\end{proof}
+

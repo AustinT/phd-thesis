@@ -1,0 +1,19 @@
+\begin{tikzpicture}[node distance=0.5cm]
+      \node[ornode] (target) at (0, 0) {$\{\targetmol\}$};
+
+      \node[ornode, below left = of target] (ma) {$\{m_a\}$};
+      \draw[->] (target) -- (ma);
+      
+      \node[ornode, below = of ma] (mb) {$\{m_b\}$};
+      \draw[->] (ma) -- (mb);
+
+      \node[ornode, below right = of target] (mc) {$\{m_c\}$};
+      \draw[->] (target) -- (mc);
+      
+      \node[ornode, below = of mc] (target2) {$\{\targetmol\}$};
+      \draw[->] (mc) -- (target2);
+      \node[ornode, below = of target2] (mc2) {$\{m_c\}$};
+      \draw[->] (target2) -- (mc2);
+      \node[labelnode, below = of mc2] (dots) {$\vdots$};
+      \draw[->] (mc2) -- (dots);
+\end{tikzpicture}

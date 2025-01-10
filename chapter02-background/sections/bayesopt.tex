@@ -1,0 +1,202 @@
+\section{Bayesian optimisation}
+\label{sec:background:bayesopt}
+
+Bayesian optimisation (BO)
+is a general class of algorithms which use
+probabilistic models to optimise functions.
+There are many specific algorithms within the umbrella of BO,
+but they all
+use of uncertainty estimates to deliberately balance exploration
+(namely actions whose outcomes are uncertain but possibly desirable)
+with exploitation (namely actions whose outcomes are confidently predicted to be desirable)
+in one way or another.
+BO is, in my opinion, the single most promising approach to the DMTA cycle (Figure~\ref{fig:dmta-schematic})
+of molecule optimisation problems
+(\S\ref{sec:background:molopt}).
+This is not because of any kind of guarantee that it will perform better than other algorithms,\footnote{
+    The no-free-lunch theorem implies this is not possible in general \citep{wolpert1997no}.
+}
+but rather because of a few key aspects of BO:
+
+\begin{enumerate}
+    \item The use of a probabilistic model allows domain knowledge to be explicitly
+        incorporated into the optimisation procedure.
+        Chemists have a lot of domain knowledge about designing molecules.
+    \item The trade-off between exploration and exploitation can be explicitly controlled and tuned.
+        This is arguably the best one can hope for if exhaustive evaluation is not possible.
+    \item BO algorithms are naturally interpretable,
+        since each decision can be traced back to probabilistic predictions about different actions.
+    \item BO algorithms can be easily extended to handle batch or noisy evaluations
+        (described further in \S\ref{sec:background:bayesopt:extensions}).
+        More general optimisation algorithms may not have a natural extension.
+\end{enumerate}
+
+All of the content chapters in this thesis contribute to BO in some way.
+Chapters~\ref{chapter:lso}, \ref{chapter:adkf}, and \ref{chapter:trf}
+all propose probabilistic models for BO, and perform explicit BO experiments.
+Chapter~\ref{chapter:rfb} proposes a retrosynthesis method
+(\S\ref{sec:background:synthesis})
+which could be used to define the space of available molecules $\amolspace$
+considered for optimisation.
+A good introduction to BO can be found elsewhere
+\citep{shahriari2015taking,brochu2010tutorial,frazier2018tutorial,garnett_bayesoptbook_2023}.
+The remainder of this section will introduce the basic steps of Bayesian optimisation
+and discuss some highly relevant literature.
+
+\subsection{Bayesian optimisation overview}
+
+
+The basic pseudo-code for Bayesian optimisation is given in Algorithm~\ref{alg:general-bayesopt}. 
+At each iteration, the algorithm fits a probabilistic model to the data,
+then uses this model to define an \emph{acquisition function} $\alpha$,
+whose maximising input is chosen for evaluation.
+The label of this input is then acquired and added to the dataset.
+In practice the most difficult steps of the algorithm are
+line~\ref{alg:bo:fit model} (which requires doing Bayesian inference)
+and
+line~\ref{alg:bo:maximise acqn fn} (which requires maximising a complicated function over the input space).
+When the input space is discrete this maximisation must almost certainly be approximate (e.g.\@ the space of molecules $\molspace$).
+We now discuss the main components of Bayesian optimisation in more detail.
+
+\begin{algorithm}[htb]
+\caption{General Sequential Bayesian optimisation procedure.}
+\label{alg:general-bayesopt}
+\begin{algorithmic}[1]
+\REQUIRE Input dataset $\D_0=\{(x_1,y_1),\ldots,(x_n,y_n)\}$, acquisition function $\alpha$
+\FOR{$i$ in $1,2,\ldots$}
+    \STATE\label{alg:bo:fit model} Fit probabilistic model $p(\hat f)$ to dataset $\D_{i-1}$
+    \STATE\label{alg:bo:maximise acqn fn} Select $x_i=\argmax_{x} \alpha(x;p(\hat f))$\hfill%
+        \COMMENT{Acquisition function maximisation}
+    \STATE Acquire label $y_i$ for $x_i$
+    \STATE $\D_i\gets \D_{i-1}\cup\{(x_i,y_i)\}$\hfill%
+        \COMMENT{Add new data point to dataset}
+    \IF{computational budget is exhausted}
+        \RETURN $\D_i$\hfill\COMMENT{Terminate}
+    \ENDIF
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Models for Bayesian optimisation}
+
+Almost any model can be used for BO, provided that it provides probabilistic predictions.
+Gaussian processes (\S\ref{sec:background:gps}) are the most commonly used model in practice however,
+likely because they are both expressive enough to interpolate many datasets
+(unlike linear models) while allowing tractable exact inference (unlike Bayesian neural networks).
+In this thesis GP models are used exclusively for BO.
+
+\subsubsection{Acquisition functions}
+
+The purpose of the acquisition function is to mathematically encode the desired balance between exploration and exploitation.
+There have been many acquisition functions proposed previously
+\citep[chapter 7]{garnett_bayesoptbook_2023}.
+The most common one in this thesis, which is used in Chapters~\ref{chapter:lso} and \ref{chapter:adkf} is
+\emph{expected improvement} (EI), defined as
+\begin{equation}\label{eqn:expected-improvement}
+    \alpha_{EI}(x;p(\hat f), y_{\text{best}}) = \E_{\hat f\sim p(\hat f)}\left[
+        \max\left(
+            0,
+            \hat f(x) - y_{\text{best}}
+        \right)
+    \right] \quad ,
+\end{equation}
+where $y_{\text{best}}$ is the maximum label observed so far.
+EI can be interpreted as how much one expects a measurement of $x$ to improve upon
+the best known observation $y_{\text{best}}$ on average.
+It is generally used in noiseless or low-noise settings where $y_{\text{best}}$
+is closely tied to the maximum value of $f$.
+
+A second acquisition function is Thompson sampling (TS),
+defined as
+\begin{equation}\label{eqn:backgroun:thompson sampling}
+    \alpha_{TS}(x;p(\hat f)) = \probability_{\hat f\sim p(\hat f)}\left[
+        x\in\argmax_{x'} \hat f(x')
+    \right] \quad .
+\end{equation}
+TS has the straightforward interpretation that the value of a point is the probability that it is the best point,
+which seems like a sensible approach to optimisation.
+The main disadvantage of TS is that it is usually not tractable to evaluate 
+equation~\ref{eqn:backgroun:thompson sampling} analytically
+(even for GP models).
+Therefore, this value is usually estimated from samples.
+
+\subsection{Bayesian optimisation for molecules}
+
+Although Bayesian optimisation is a general and input-agnostic framework,
+most works in the literature focus on continuous, low-dimensional vector spaces.
+Therefore, applying BO to molecule space requires changing three
+parts of the ``default'' BO setup.
+\begin{enumerate}
+    \item Defining the space of available molecules $\amolspace$ to search over.
+    \item Choosing  probabilistic model $p(\hat f)$ over $\amolspace$ (used in line~\ref{alg:bo:fit model}).
+    \item Designing a sub-routine to maximise the acquisition function over $\amolspace$
+        (used in line~\ref{alg:bo:maximise acqn fn}).
+\end{enumerate}
+
+These things can, in general, be chosen independently.
+Section~\ref{sec:background:mol-kernels} introduced kernels
+for molecules which can be used to define a Gaussian process model.
+The space of available molecules $\amolspace$ can be defined
+as all molecules (i.e.\@ $\amolspace=\molspace$),
+a set of synthesizable molecules
+(where the synthesizability of a molecule can be checked using techniques
+from \S\ref{sec:background:synthesis}),
+or a pre-determined list of molecules (e.g.\@ available molecules from a chemical supplier).
+The acquisition function can be maximised using genetic algorithms like Graph GA \citep{jensen2019graph}
+or by screening molecules produced by a generative model (\S\ref{sec:background:molgen}).
+However, some works propose a more integrated approach,
+where some components of the BO algorithm are chosen synergistically
+\citep{%
+    baptista2018bayesian,%
+    kim2019bayesian,%
+    daxberger2019mixed,%
+    oh2019combinatorial,%
+    kandasamy2015high,%
+    mutny2018efficient,%
+    hoang2018decentralized,%
+    korovina2020chembo%
+}.
+For example, \citet{thebelt2022tree} uses a special kernel for which
+the acquisition function can be maximised using established conic optimisation techniques.
+
+\subsection{Extensions of Bayesian optimisation}
+\label{sec:background:bayesopt:extensions}
+
+Although algorithm~\ref{alg:general-bayesopt} describes the basic BO procedure,
+there are many variants which are adapted to slightly different problem formulations
+which may arise in real-world molecule optimisation.
+We briefly discuss some of these here.
+
+\paragraph{Batch evaluation}
+Line~\ref{alg:bo:maximise acqn fn} of algorithm~\ref{alg:general-bayesopt} can be modified
+to instead select a batch of $b$ points to evaluate at once.
+This typically requires modifying the acquisition function to input a \emph{set}
+of points (rather than a single point),
+and thereby makes optimising the acquisition function more difficult.
+However, many physical properties of molecules are naturally evaluated in parallel
+(for example multi-well plates for biological assays),
+so this is a natural extension to consider in the context of molecules.
+
+\paragraph{Multiple functions}
+In multi-source \citep{poloczek2017multi}
+or multi-task \citep{swersky2013multi} optimisation,
+one has access to several functions $f_1,\ldots,f_m$,
+and at each iteration will choose a both an input $x_i$
+\emph{and} a function $f_j$, to evaluate $y_{i,j }= f_j(x_i) + \epsilon_{i,j}$.
+Because there are usually multiple ways to evaluate a molecular property
+(e.g.\@ machines with different sensitivities),
+this is also a natural extension to consider for molecule optimisation.
+
+\paragraph{Constraints}
+Constraints which are themselves expensive to evaluate can be incorporated into the BO procedure
+by introducing an additional surrogate model
+for the constraint function \citep{gardner2014bayesian}.
+In practice, molecule optimisation will often have such constraints
+(e.g.\@ synthesizability).
+
+\paragraph{Changing acquisition functions}
+In algorithm~\ref{alg:general-bayesopt},
+the same acquisition function $\alpha$ is used at each iteration.
+This could be replaced by a different acquisition function $\alpha_i$ at each iteration.
+This could, for example, be used to enhance exploration in the early stages of optimisation
+but encourage more exploitation in the later stages.

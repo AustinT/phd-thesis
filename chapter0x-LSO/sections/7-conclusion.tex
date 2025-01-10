@@ -1,0 +1,17 @@
+\section{Discussion}
+\label{sec:lso:conclusion}
+We proposed a method for efficient black-box optimisation over high-dimensional, structured input spaces, combining latent space optimisation with weighted retraining.
+We showed that while being conceptually simple and easy to implement on top of previous methods, weighted retraining significantly boosts their efficiency and performance on challenging real-world optimisation problems.
+
+There are several drawbacks to our method that are promising directions for future work.
+Firstly, we often found it difficult to train a latent objective model that performed well at optimisation in the latent space, which is critical for good performance.
+We believe that further research is necessary into other techniques to make the latent space of \glspl{dgm}
+more amenable to optimisation.
+Secondly, our method requires a large dataset of labelled data to train a \gls{dgm},
+making it unsuitable for problems with very little data,
+motivating adaptations that would allow unlabelled data to be utilized.
+Finally, due to being relatively computationally intensive, we were unable to characterize
+the long-term optimisation behaviour of our algorithm.
+In this regime, we suspect that it may be beneficial to use a weighting \emph{schedule}
+instead of a fixed weight, which may allow balancing exploration vs.\@ exploitation similar to simulated annealing \citep{van1987simulated}.
+Overall, we are excited about the potential results of \gls{lmo} and hope that it can be applied to a variety of real-world problems in the near future.

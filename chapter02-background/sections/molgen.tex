@@ -1,0 +1,64 @@
+\section{Generative models for molecules}
+\label{sec:background:molgen}
+
+Estimates have suggested that as many as $10^{60}$ small organic molecules may exist
+\citep{bohacek1996art},
+yet even the largest chemical libraries contain only $\approx10^{20}$ molecules
+\citep{hoffmann2019next}.
+To cover a larger fraction of chemical space, it makes sense to represent chemical space \emph{implicitly}
+using an algorithm to generate molecules.
+There are many algorithms which can do this
+\citep{xu2019deep,du2022molgensurvey}.
+A notable type are \emph{generative models},
+which (implicitly or explicitly) specify a distribution $p(m)$ over molecule space.
+Here we briefly review some \emph{deep} generative models for molecules,
+which use neural networks to define $p(m)$.
+
+Since molecules are discrete objects with variable size,
+deep generative models for molecules all tend to parameterize some
+kind of iterative construction process to produce a molecule incrementally.
+Recurrent neural networks and transformers define a distribution
+for the next token given all the previous tokens
+\citep{Goodfellow-et-al-2016deep-learning,turner2023introduction},
+and can thereby be used to generate string representations of molecules
+(\S\ref{sec:background:string-reps}).
+Other, more complex models construct graph objects directly by adding one node at a time.
+Examples of such architectures are the graph convolutional policy network \citep{you_graph_2018},
+and the junction-tree decoder \citep{jin_junction_2019}.
+
+All of these models can be used to perform unconditional generation by allowing
+for some stochasticity when making choices of tokens to add.
+They can also be modified to accept an additional vector input $\bm{z}$.
+This allows them to be used in conditional deep generative models.
+One popular such model is the variational autoencoder (VAE) \citep{kingma2013auto}.
+VAEs treat $\bm{z}$ as a latent variable and introduce a prior $p(\bm{z})$ over it.
+Because the resulting distribution $p_{\bm{\theta}}(x):=\int p_{\bm{\theta}}(x|\bm{z})p(\bm{z})\,d\bm{z}$
+is intractable for high-dimensional $\bm{z}$,
+VAEs instead introduce an approximate posterior $q_{\bm{\phi}}(\bm{z}|x)$
+and maximise the variational lower bound
+\begin{equation}
+    \log{p_{\bm{\theta}}(x)} \geq
+    \E_{\bm{z}\sim q_{\bm{\phi}}(\bm{z}|x)} \left[
+        \log{p_{\bm{\theta}}(x|\bm{z})p(\bm{z})}
+        - \log{q_{\bm{\phi}}(\bm{z}|x)}
+    \right]
+\end{equation}
+with respect to the parameters $\bm{\theta},\bm{\phi}$.
+This objective can be estimated by a mix of Monte-Carlo sampling and analytical expressions,
+especially when $p(\bm{z})$ and $q_{\bm{\phi}}(\bm{z}|x)$ have a similar form (e.g.\@ both Gaussian).
+
+Besides VAEs, other popular latent variable models are GANs \citep{goodfellow2014generative}
+and normalizing flows \citep{rezende2014stochastic,papamakarios2021normalizing}.
+However, their training is better suited for continuous data so they are less useful for molecules.
+
+More recent works propose to generate molecules using diffusion models,
+both in 3D \citep{yang2023diffusionmodels,hoogeboom2022equivariant,xu2022geodiff,jing2022torsional}
+and 2D \citep{jo2022scorebased,vignac2023digress,liu2023generativediffusion,yang2023diffusionmodels}.
+These models are arguably ``state of the art'' in all kinds of generative tasks
+and may possibly be the best method for molecule generation.\footnote{
+    However, as I recently argued in \citet{tripp2023genetic},
+    simply generating valid molecular graphs is not very difficult,
+    so it is hard to say whether diffusion models are actually better than other methods.
+}
+However, they will not be used in this thesis, chiefly because they did not exist
+when my work on molecule generation in chapter~\ref{chapter:lso} was performed.

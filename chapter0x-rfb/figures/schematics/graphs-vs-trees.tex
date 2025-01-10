@@ -1,0 +1,62 @@
+\begin{minipage}{.48\textwidth}
+    \centering
+    
+    \begin{tikzpicture}[node distance=0.5cm]
+          \node[ornode] (target) at (0, 0) {$\targetmol$};
+
+          \node[andnode, below left = of target] (r1) {$r_1$};
+          \draw[->] (target) -- (r1);
+          \node[ornode, below = of r1] (ma) {$m_a$};
+          \draw[->] (r1) -- (ma);
+          
+          \node[andnode, below = of ma] (r2) {$r_2$};
+          \draw[->] (ma) -- (r2);
+          \node[ornode, below = of r2] (mb) {$m_b$};
+          \draw[->] (r2) -- (mb);
+
+          \node[andnode, below right = of target] (r3) {$r_3$};
+          \draw[->] (target) -- (r3);
+          \node[ornode, below right = of r3] (mc) {$m_c$};
+          \draw[->] (r3) -- (mc);
+
+          \node[andnode, above = of mc] (r4) {$r_4$};
+          \draw[->] (mc) -- (r4);
+          \draw[->] (r4) -- (target);
+    \end{tikzpicture}
+
+    \vfill
+    a) Graph version
+\end{minipage}
+\begin{minipage}{.48\textwidth}
+    \centering
+    \begin{tikzpicture}[node distance=0.5cm]
+          \node[ornode] (target) at (0, 0) {$\targetmol$};
+
+          \node[andnode, below left = of target] (r1) {$r_1$};
+          \draw[->] (target) -- (r1);
+          \node[ornode, below = of r1] (ma) {$m_a$};
+          \draw[->] (r1) -- (ma);
+          
+          \node[andnode, below = of ma] (r2) {$r_2$};
+          \draw[->] (ma) -- (r2);
+          \node[ornode, below = of r2] (mb) {$m_b$};
+          \draw[->] (r2) -- (mb);
+
+          \node[andnode, below right = of target] (r3) {$r_3$};
+          \draw[->] (target) -- (r3);
+          \node[ornode, below = of r3] (mc) {$m_c$};
+          \draw[->] (r3) -- (mc);
+
+          \node[andnode, below = of mc] (r4) {$r_4$};
+          \draw[->] (mc) -- (r4);
+          \node[ornode, below = of r4] (target2) {$\targetmol$};
+          \draw[->] (r4) -- (target2);
+          \node[andnode, below = of target2] (r3-2) {$r_3$};
+          \draw[->] (target2) -- (r3-2);
+          \node[labelnode, below = of r3-2] (dots) {$\vdots$};
+          \draw[->] (r3-2) -- (dots);
+    \end{tikzpicture}
+
+    b) Tree version
+
+\end{minipage}

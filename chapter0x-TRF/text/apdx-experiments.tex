@@ -1,0 +1,100 @@
+\section{Experimental details}\label{trf:appendix:experimental details}
+
+\subsection{Details of \texorpdfstring{$T_{MM}$}{TMM} random features}\label{apdx:explain tmm features and hash}
+
+We use the random hash from \citet{ioffe2010improved} in our implementation.
+To hash vectors in $\mathbb{R}^D$
+random variables
+$r_i, c_i\sim \Gamma(2, 1)$, $\beta_i\sim U(0, 1)$
+are drawn i.i.d.\@ for $i=1,\ldots,D$,
+and then the following\footnote{
+Note that the presentation of equations~\ref{eqn:ioffe-hash-first}--\ref{eqn:ioffe-hash-last}
+differs slightly from \citet{ioffe2010improved} who defines $y_i$ and $a_i$ to be the exponential
+of equations~\ref{eqn:ioffe-hash-second}/\ref{eqn:ioffe-hash-third}: we wrote it this way because in practice
+working in log space avoids numerical stability issues.
+This is explicitly suggested in their paper.
+}
+are computed for all $i$:
+\begin{align}
+    t_i(x) &= \lfloor (\ln{x_i})/r_i + \beta_i \rfloor \label{eqn:ioffe-hash-first}\,, \\
+    y_i(x) &= r_i(t_i(x)-\beta_i) \label{eqn:ioffe-hash-second}\,, \\
+    a_i(x) &= \ln{c_i} - y_i(x) - \ln{r_i} \label{eqn:ioffe-hash-third}\,, \\
+    i^*(x) &= \arg\min_{i=1,\ldots,D} a_i(x)\,,  \\
+    h_{r,c,\beta}(x) &= \left(i^*(x), t_{i^*(x)}(x)\right) \,.\label{eqn:ioffe-hash-last}
+\end{align}
+Note that equation~\ref{eqn:ioffe-hash-first} uses the convention that $\ln{0}=-\infty$.
+These variables do not have a clear interpretation in isolation, so we refer the reader
+to \citet{ioffe2010improved} for an explanation of why this hashing procedure
+produces a random hash for $T_{MM}$.
+The hash itself is formed of 2 integers: $i^*\in\{1,\ldots,D\}$
+and $t_{i^*}\in\mathbb{Z}$.
+This unfortunately means that the number of possible outputs is potentially infinite,
+which would require us to potentially sample an arbitrarily large vector $\Xi$.
+To avoid this, we first use python's built-in \texttt{hash} function to map this pair of integers to a single integer,
+then take the result modulo $2^{12}=4096$.
+This allows us to sample a small (finite) vector $\Xi$,
+and although it introduces a small amount of bias this does not appear to be an issue in practice.
+
+Elements of $\Xi$ are always sampled i.i.d.\@ from either a Rademacher or Gaussian distribution
+(the distribution should always be clear from context).
+
+
+
+\subsection{Gaussian process training details from section~\ref{sec:regression-expt}}\label{apdx:regression-expt-details}
+
+Our GP models use a constant mean and Gaussian noise.
+Specifically, the model of the observed labels $y$ is:
+\begin{align*}
+    f(X) &\sim \mathcal{GP}\left(\mu, ak(X,X)]\right) \\
+    y(X) &\sim \mathcal{N}\left(f(X), \sigma^2I\right)
+\end{align*}
+Therefore, the GP hyperparameters are three scalars:
+\begin{itemize}
+    \item The constant mean, $\mu$
+    \item The kernel amplitude/outputscale $a$
+    \item The observation noise $\sigma^2$
+\end{itemize}
+
+GP performance will be greatly affected by the choice of kernel hyperparameters.
+To ensure that the difference in performance is not due to differences in kernel hyperparameter settings
+we fit them in a consistent way for all methods.
+Specifically,
+for all methods,
+we start by fitting an exact GP to a random subset of $M=5000$ data points by maximising the marginal likelihood with L-BFGS.
+The different approximations are as follows:
+\begin{itemize}
+    \item \textbf{Random subset:}
+        \texttt{gpytorch}'s exact GP inference is applied on a random subset of $M$ data points
+        (a different subset then was used to fit the hyperparameters).
+    \item \textbf{SVGP:}
+        \texttt{scikit-learn}'s K-means clustering is run with $M$ clusters to produce an initialization of the inducing points.
+        These inducing points are used to initialize a sparse variational GP \citep{hensman2013gaussian},
+        implemented in \texttt{gpytorch}.
+        The variational parameters are optimised via natural gradient descent with a learning rate of $10^{-1}$
+        and a batch size of $2M=10\,000$ for one pass through the dataset.
+        Although the inducing point locations themselves could be further optimised with gradient descent,
+        we chose not to do so for this experiment.
+    \item \textbf{RFGP:}
+        First, the training and test sets are converted into $M$ dimensional random features.
+        Then, the posterior equations for inference in Bayesian linear models
+        are used to make predictions on the test set given the training set \citep[equations 3.49--3.51]{bishop2006pattern}.
+        The computation is done in a specific order to avoid forming any $n\times n$ matrices
+        (the Woodbury matrix identity is used extensively for this).
+        This is fairly clearly documented in the code.
+\end{itemize}
+
+Note that for $T_{MM}$ it was vital to implement the kernel as
+\begin{equation}\label{eqn:minmax-using-l1-distance}
+    T_{MM}(x, x') = \frac{\|x\|_1+\|x'\|_1 - \|x-x'\|_1}{\|x\|_1+\|x'\|_1 + \|x-x'\|_1}
+\end{equation}
+instead of a naive implementation which follows equation~\ref{eqn:background:tanimoto-for-sets}.
+This is because such an implementation requires forming a tensor of shape $N\times M \times d$
+when calculating the kernel between $N$ and $M$ points in $\mathbb{R}^d$
+(for example $T_{ijk}=\min(x_{ik}, y_{jk})$)
+which can exceed memory limits for modest $N,M,d$.
+This identity allows us to use the relatively efficient \texttt{torch.cdist} function.
+Note that we did \emph{not} invent this identity ourselves;
+we discovered it in \citet{ioffe2010improved}.
+
+Even with this implementation, $M=5000$ inducing points did not fit into GPU memory for $T_{MM}$,
+so all experiments were run on CPU.

@@ -1,0 +1,326 @@
+\section{Probabilistic models for molecular properties}
+\label{sec:background:models}
+
+The main contributions presented in this thesis are algorithms which \emph{use}
+models to perform supervised learning (\S\ref{sec:background:supervised learning})
+or molecule optimisation (\S\ref{sec:background:molopt}),
+while being mostly agnostic to the details of the models themselves.
+Furthermore, since molecules can be represented as sequences and vectors (\S\ref{sec:background:mols}),
+and since these data types are arguably the most studied data types in all of machine learning,
+there exists an enormous number of machine learning models which \emph{could} be applied to molecules.
+Therefore, this section will not even attempt to present a comprehensive introduction to such methods;
+if interested a reader may consult any number of high-quality textbooks or reviews
+\citep{bishop2006pattern,Goodfellow-et-al-2016deep-learning,murphy2022probabilistic}.
+Instead, this section will present and contextualize a small number of model classes which appear in this thesis,
+and will also explain their probabilistic interpretation (which may not be familiar to all readers).
+
+\subsection{Probabilistic linear models}
+\label{sec:background:linear models}
+
+Given a \emph{feature} function $\phi:\mathcal X \mapsto \R^M$,
+linear regression defines $\hat f: \mathcal X \mapsto \R$ as
+\begin{equation}
+    \hat f (x) = \bm{w} \cdot \phi (x) + b \quad .
+\end{equation}
+This model has a vector of \emph{weight} parameters $\bm{w}\in\R^M$
+and a \emph{bias} parameter $b\in\R$.
+In a non-probabilistic regression setting $\hat f$ is directly used to predict
+labels $y$ (typically called ``linear regression'').
+In the probabilistic setting however,
+$\hat f$ is connected to $y$ via an \emph{observation model}
+which assigns a probability to every possible outcome for $y$.
+
+For regression, this observation model is most often
+a Gaussian distribution centred on $\hat f(x)$,
+with probability density function
+\begin{equation}\label{eqn:background:gaussian noise}
+    p_{\bm{w}, b, \sigma^2}(y|x) = \mathcal{N}(y; \hat f(x), \sigma^2)\quad .
+\end{equation}
+Here, $\mathcal N(y; a, b)$ is the probability density
+of a Gaussian distribution with mean $a$
+and variance (or covariance matrix) $b$ at $y$.
+The parameter $\sigma^2$ is also called the \emph{noise} parameter.
+
+For \emph{binary} classification ($C=2$),
+the model
+\begin{equation}
+    \probability_{\bm{w}, b}\left(y=1|x\right) = \frac{e^{\hat f(x)}}{1 + e^{\hat f (x)}}
+\end{equation}
+is typically used ($\probability$ denotes the probability of an event).\footnote{
+    This is also called \emph{logistic regression}.
+}
+For $C>2$ a single linear model is insufficient to assign probabilities to all outcomes;
+instead a set of linear models with parameters $(\bm{w_1}, b_1),\ldots,(\bm{w}_C, b_C)$
+is created, with
+\begin{equation}
+    \probability_{\bm{w}_1,b_1,\ldots,\bm{w}_C,b_C} \left( y = i | x \right) \propto e^{\hat f_i(x)}\quad .
+\end{equation}
+
+Linear models are not used directly in this thesis, but
+form the basis for more complex models introduced in the following sections.
+
+\subsection{Gaussian processes and Bayesian linear models}
+\label{sec:background:gps}
+
+The crux of Bayesian modelling is to treat the model itself as a random variable,
+typically by introducing a \emph{prior} distribution on the model parameters.
+If a standard normal $\mathcal N(\bm{0}, \mI)$ prior is put on the linear model weights
+$\bm{w}$, this induces the distribution
+\begin{equation}
+    \begin{bmatrix}
+        \hat f (x_1) \\
+        \vdots \\
+        \hat f (x_N)
+    \end{bmatrix}
+    \sim \mathcal N \left(b \bm{1}, \mK \right)
+\end{equation}
+over the outcomes $\hat f (x_1), \ldots, \hat f (x_N)$
+(which are random variables by implication of $\bm{w}$ being a random variable).
+Here, $\bm{1}$ denotes a vector of $1$s,
+and $\mK$ is a matrix whose entries correspond to inner products between feature vectors
+\begin{equation}\label{eqn:background:kernel function defn}
+    \emK_{i,j}=k(x_i,x_j):=\phi(x_i) \cdot \phi(x_j) \quad .
+\end{equation}
+
+The function $k(\cdot, \cdot)$ is called the \emph{kernel function}
+(discussed further in \S\ref{sec:background:mol-kernels}).
+Because the distribution of $\hat f$ depends only on features $\phi$
+via the inner product function $k$,
+it is common to define Bayesian linear models directly using $k$.
+In this context, such models are usually referred to as \emph{Gaussian processes} (GPs)
+and can be thought of directly defining a distribution over functions $\mathcal X\mapsto \R$:
+\begin{equation}
+    \hat f \sim \mathcal{GP}(\mu(\cdot), k(\cdot, \cdot)) \quad .
+\end{equation}
+
+Measurements $y_1,\ldots,y_N$ can then be described as sampled from distributions
+induced by random samples of $\hat f$.
+However, what really makes GPs useful for machine learning is that
+if the observation model is also Gaussian (equation~\ref{eqn:background:gaussian noise}),
+then the Bayesian posterior distribution over $\hat f$ is \emph{also a Gaussian process}
+(although with a different mean and kernel function which depend on the observed data).
+With a constant noise value of $\sigma^2$, the posterior distribution over query points
+$x^*_1, \ldots, x^*_Q$ 
+given observations
+$((x_1, y_1), \ldots (x_N, y_N))$
+has the form
+\begin{equation}
+    \begin{bmatrix}
+        \hat f(x^*_1) \\
+        \vdots \\
+        \hat f(x^*_Q)
+    \end{bmatrix}
+    \sim \mathcal{GP} \left(\tilde \mu (\cdot), \tilde k(\cdot, \cdot) \right)
+\end{equation}
+where
+\begin{align}
+    \tilde \mu(x^*) &= \mu(x^*) 
+    + \begin{bmatrix}
+        k(x^*, x_1) \\
+        \vdots \\
+        k(x^*, x_N)
+    \end{bmatrix}^T
+    \left(\mK(X, X) + \sigma^2\mI\right)^{-1}
+    \begin{bmatrix}
+        y_1 - \mu(x_1) \\
+        \vdots \\
+        y_N - \mu(x_N) \\
+    \end{bmatrix}\quad,  \\
+    \tilde k(x^*_i, x^*_j) &=
+    k(x^*_i, x^*_j) -
+    \begin{bmatrix}
+        k(x^*_i, x_1) \\
+        \vdots \\
+        k(x^*_i, x_N)
+    \end{bmatrix}^T
+    \left(\mK(X, X) + \sigma^2\mI\right)^{-1}
+    \begin{bmatrix}
+        k(x_1, x^*_j) \\
+        \vdots \\
+        k(x_N, x^*_j)
+    \end{bmatrix}\quad,  \\
+    \mK(X,X)_{i,j} &= k(x_i,x_j)
+\end{align}
+\citep{rasmussen2006gp}.
+This also allows the marginal likelihood of the data to be computed in closed form.
+For a GP with a constant noise value $\sigma^2$,
+mean function $\mu(\cdot)$, and kernel function $k(\cdot, \cdot)$,
+the (log) marginal likelihood of the data $X=\left[x_1,\ldots,x_N\right]$
+is given by
+\begin{equation}\label{eqn:background:gp-marginal-likelihood}
+    \log{p(\bm{y}|X)} =
+        -\frac{1}{2}\bm{y}^T
+            \left(\mK(X, X) + \sigma^2\mI\right)^{-1}
+            \bm{y}
+        -\frac{1}{2}\log\left|\mK(X, X) + \sigma^2\mI\right|
+        -\frac{N}{2}\log(2\pi)
+\end{equation}
+\citep{rasmussen2006gp}.
+GP models are often selected to maximise the marginal likelihood of the data
+by maximising equation~\ref{eqn:background:gp-marginal-likelihood}
+with respect to the parameters of the mean and kernel functions.
+    
+\subsection{Gaussian process kernels \emph{for molecules}}
+\label{sec:background:mol-kernels}
+
+Equation~\ref{eqn:background:kernel function defn}
+defined the kernel function $k(\cdot, \cdot)$ as the inner product of feature vectors.
+However, in practice it is much more common to define the kernel function directly.
+Any kernel function which is \emph{positive definite}
+(i.e.\@ no kernel matrix formed from the kernel function will have negative eigenvalues)
+will implicitly correspond to an inner product between feature vectors
+in some Hilbert space, which may be infinite-dimensional
+\citep{scholkopf2002learning}.
+Since the kernel provides the primary inductive bias of GP models,
+it is important to choose a kernel function carefully.
+
+For vector-valued data in $\R^n$,
+the most common kernels are the \emph{radial basis function} (RBF) kernel
+\begin{equation}\label{eqn:rfb kernel defn}
+    k(x, x') = \exp\left(-\frac{\|x - x'\|^2}{2\ell^2}\right)
+\end{equation}
+or the \emph{Mat\'ern} family of kernels, indexed by a parameter $\nu$.
+A common value for $\nu$ is $\nu=5/2$,
+which yields the kernel function
+\begin{equation}\label{eqn:matern52 kernel defn}
+    k(x, x') = \left(1 + \frac{\sqrt{5}\|x - x'\|}{\ell} + \frac{5\|x - x'\|^2}{3\ell^2}\right)
+    \exp\left(-\frac{\sqrt{5}\|x - x'\|}{\ell}\right) \quad .
+\end{equation}
+Both of these kernels encode the assumption that input vectors
+with a small Euclidean distance are likely to have similar outputs.
+
+Vector valued kernels can be applied to some molecular representations
+(e.g.\@ embeddings) but are not directly applicable to molecular graphs.
+For fingerprint representations of molecules it is useful to define set-valued kernels.
+A notable set kernel which will be used in several places throughout this thesis is the
+\emph{Tanimoto kernel},
+also called the \emph{Jaccard kernel}
+\citep{jaccard1912distribution,tanimoto1958elementary}.
+This kernel has been widely used in cheminformatics to compare molecular fingerprints
+\citep{ralaivola2005graph,bajusz2015tanimoto,o2016comparing,miranda2021differential}.
+It can be defined in several equivalent ways.
+For plain sets, the definition
+\begin{equation}\label{eqn:background:tanimoto-for-sets}
+    T(S_1, S_2) = \frac{\left| S_1 \cap S_2 \right|}{\left| S_1 \cup S_2 \right|}
+\end{equation}
+suffices.
+This definition can easily be extended to multi-sets.
+Letting $m_i(x)$ denote the multiplicity of $x$ in multi-set $S_i$,
+we define
+\begin{equation}\label{eqn:background:tanimoto-for-multisets}
+    T(S_1, S_2) = \frac{\sum_{x\in S_1\cup S_2}\min\left(m_1(x), m_2(x)\right)}{\sum_{x\in S_1\cup S_2}\max\left(m_1(x), m_2(x)\right)} \hfill .
+\end{equation}
+Note that equations~\ref{eqn:background:tanimoto-for-sets} and \ref{eqn:background:tanimoto-for-multisets}
+are consistent and compatible using standard notions of intersection/union for multi-sets.
+This kernel encodes the inductive bias that input sets with a high degree of overlap
+are likely to have similar outputs.
+When applied to molecular fingerprints, this is equivalent to assuming
+that molecules with similar substructures are likely to have similar properties.
+
+The Tanimoto kernel has the useful property that $1-T(\cdot, \cdot)$ is a valid distance metric,
+typically called the \emph{Jaccard/Soergel distance}
+\citep{marczewski1958certain,levandowsky1971distance}.
+This makes it useful in nearest-neighbour methods in addition to GP models
+(although this will not be exploited in this thesis).
+
+Combining the Tanimoto kernel with a molecular fingerprinting function
+creates a kernel directly over graph space.
+Prior works have also developed many other kernels 
+which operate directly on graph-structured inputs 
+\citep{nikolentzos2021graph}.
+These kernels generally also perform some sort of comparison of substructures present within the two input graphs.
+For example,
+\citet{moss2020boss} converts graphs into SMILES strings and defines a kernel based on substring matching.
+\citet{korovina2020chembo} proposes a kernel based on graph optimal transport.
+These kernels are not used directly in this thesis and so will not be discussed further.
+
+
+\subsection{Fast approximations for Gaussian processes}
+\label{sec:background:approx-gp-inference}
+
+Regardless of the kernel used, GP models are notorious for scaling poorly to large datasets.
+Evaluating the posterior covariance requires computing the kernel value between all
+pairs of input data in $x_1,\ldots,x_N$ (time complexity $\mathcal O (N^2)$)
+and inverting a regularized version of this matrix (time complexity $\mathcal O (N^3)$).
+Even if $N$ is small, producing a full covariance matrix between $Q$
+query points still has $\mathcal O(Q^2)$ cost,
+and many operations such as sampling require inverting this matrix ($\mathcal O(Q^3)$).
+For this reason approximations to GPs have been widely studied
+\citep{liu2020scalable-gps}.
+
+There are many different approaches which all aim to avoid expensive matrix computations in different ways.
+One popular class of approaches are \emph{inducing point methods}.
+These approximate a GP over $x_1,\ldots,x_N$
+with a GP over a smaller set of $M$ pseudo-data points $z_1,\ldots,z_M\in\mathcal X$.
+If $M\ll N$ these approximations will be significantly faster than the exact GP,
+generally reducing $\mathcal O (N^2)$ operations to $\mathcal O(MN)$ and $\mathcal O (N^2)$ to $O(NM^2)$.
+The inducing points function as a set of tunable parameters
+and are generally chosen to ``cover'' the dataset.
+A commonly-used model of this type is the stochastic
+variational Gaussian process (SVGP) 
+\citep{titsias2009variational,hensman2013gaussian}.
+
+Another approach is \emph{random features} \citep{rahimi2007random}.
+Given a kernel $k$, a \emph{random features map} 
+is a random function
+$f:\mathcal{X}\mapsto\mathbb{R}^M$, with the property that  $f(x)\cdot f(x')$ approximates $k(x,x')$ for every pair $x,x'\in\mathcal X$.
+The approximation is often exact in expectation:
+\begin{equation}\label{eqn:random-feature-definition}
+    \mathbb{E}_f\left[f(x)\cdot f(x')\right]=k(x,x') \quad \text{for all }x,x'\in\mathcal X.
+\end{equation}
+Random features effectively create a rank-$M$ approximation to the kernel matrix $\mK(\mX, \mY) \approx f(\mX)^T f(\mY)$.
+This results in the same reductions to computational cost as the inducing point approximations,
+i.e.\@ at most linear in $N$.
+A random features map is sometimes called a \emph{data-oblivious sketch}, to distinguish it from other \emph{data-dependent}
+low-rank approximation methods which depend on a given dataset.
+Examples of data-dependent low rank sketches are the Nystr\"{o}m approximation and leverage-score sampling \citep{drineas2005nystrom,drineas2012fast}.
+Although data-dependent methods may result in lower approximation errors for a given dataset,
+data-oblivious sketches are naturally parallelizable and useful in cases where the dataset  changes over time (e.g.\@ streaming or optimisation)
+or for ultra-large datasets which may not fit in memory.
+
+Other approaches accept the $\mathcal O (N^2)$ construction of the kernel matrix,
+but try to approximate its inversion in less than $\mathcal O (N^3)$ complexity.
+Approaches in this category include conjugate gradient methods
+\citep{gardner2018gpytorch,wang2019exact}
+and stochastic gradient methods
+\citep{antoran2023samplingbased,lin2023sampling-sgd,lin2024stochastic}.
+However, these are not used in this thesis.
+
+Importantly, note that these methods are ultimately \emph{approximations}
+to exact Gaussian processes and therefore will in general provide different predictions.
+Approximate GPs are best thought of as sacrificing prediction quality
+for computational tractability.
+
+\subsection{Deep Learning and Neural Networks}
+\label{sec:background:deep learning for molecules}
+
+Deep learning describes an enormous family of models which map inputs to outputs
+using a sequence of non-linear transformations (typically differentiable).
+Deep learning has proliferated enormously over the past decade,
+producing a deluge of model types.
+A thorough introduction to deep learning can be found elsewhere
+\citep{Goodfellow-et-al-2016deep-learning,murphy2022probabilistic}.
+Here we will only briefly mention the neural network types which are used in this thesis.
+
+\begin{itemize}
+    \item \textbf{Feedforward neural networks},
+        also called a multi-layer perceptron (MLP) for historical reasons,
+        transform vector inputs to vector outputs using an alternating sequence of matrix multiplications
+        and non-linear transformations referred to as ``activation functions''.
+        They are described in detail in \citet[chapter 6]{Goodfellow-et-al-2016deep-learning}.
+    \item \textbf{Graph neural networks} (GNNs)
+        accept graphs as inputs and produce vectors as outputs.
+        Many GNNs effectively pass ``messages'' between nodes,
+        which are weighted by learnable parameters to produce an embedding for each node.
+        These embeddings are aggregated to produce an overall graph embedding.
+        A more thorough introduction to GNNs is given in
+        \citet{zhou2020graph}.
+\end{itemize}
+
+Throughout this thesis neural networks will simply be treated as parameterized
+functions $f_{\bm{\theta}}:\molspace \mapsto \R^n$
+whose outputs are differentiable with respect to the parameters $\bm{\theta}$.
+The outputs of $f_{\bm{\theta}}$ can be used as the input features to a linear model
+(\S\ref{sec:background:linear models}),
+and thereby can form probabilistic models in the same way.
+

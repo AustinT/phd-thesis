@@ -1,0 +1,226 @@
+\section{Formulating molecular discovery problems}
+\label{sec:background:problems}
+
+Section~\ref{sec:intro:what is discovery}
+linked ``discovery'' of a molecule to the measurement of one or more properties of interest.
+Here we define these properties more precisely and discuss mathematical objectives which arise from this.
+
+The most basic type of property is the real-valued property,
+which can be represented as a function
+$f:\molspace\mapsto\R$.
+Nearly all physicochemical properties are real-valued, for example
+solubility in water (e.g.\@ measured in $\mathrm{g\,L^{-1}}$),
+binding energy to a protein (e.g.\@ measured in $\mathrm{kJ\,mol^{-1}}$),
+electronic band gap (e.g.\@ measured in $\mathrm{eV}$),
+or pH (a dimensionless quantity).
+Many application-specific properties are also naturally real-valued,
+for example the power conversion efficiency of an organic solar cell molecule (measured in \%),
+or clinical outcomes of a drug molecule (e.g.\@ fraction of patients cured).
+
+However, it is also necessary to consider categorical properties,
+which can be represented as functions $f:\molspace\mapsto\{1,\ldots,C\}$ for some constant $C$
+($C=2$ represents the special case of binary classification).
+There are a small number of properties which are truly categorical,
+for example whether a molecule contains a certain element
+or whether a molecule is chiral.
+However, most categorical properties originate from discretizing or aggregating real-valued properties.
+For example, a drug molecule may be considered ``active'' if it has any non-negligible therapeutic outcome
+(regardless of the intensity of that outcome),
+otherwise inactive.
+Another example is toxicity: a molecule may be considered ``toxic'' if it causes any number of adverse effects
+at any intensity level.
+Although such categorical properties are usually less fundamental than real-world properties,
+they may nonetheless be useful in situations where observation noise is high
+or when a discrete decision must be taken (e.g.\@ whether or not to disqualify a drug candidate due to toxic side effects).
+In practice, many molecular datasets commonly seen in machine learning papers have categorical labels.
+
+The following subsections describe the most common problems which
+can be formulated from such property functions.
+
+\subsection{Molecule optimisation and its variants}
+\label{sec:background:molopt}
+
+Given a space of accessible molecules $\amolspace\subseteq\molspace$
+and a function $f:\molspace\mapsto\R$, \emph{molecule optimisation}
+is the problem of finding
+\begin{equation}\label{eqn:defn:molopt}
+    m^* = \argmax_{m\in\amolspace} f(m) \quad,
+\end{equation}
+namely finding a molecule which maximises $f$.
+This formulation makes sense when, all else being equal, one desires the \emph{best} molecule.
+For example, if $f$ represents increase the increase in cancer survival rate caused by ingesting $m$
+or power conversion efficiency of $m$ in a solar cell,
+higher values of $f$ are undoubtedly better (assuming all other factors are held constant).
+
+Equation~\ref{eqn:defn:molopt} is best viewed as defining the \emph{base} problem of molecule optimisation.
+Variants of the problem can be categorized along the following (largely orthogonal) axes.
+
+\subsubsection{Variation 1: Constraints}
+
+As the phrase ``all else being equal'' highlights,
+one is rarely just interested in maximising a single function.
+For example, a drug molecule should not be toxic
+or too expensive to produce,
+and
+an organic photovoltaic material must not degrade too quickly when exposed to sunlight.
+These secondary interests can be formalized as constraints
+on other property functions $f_1,f_2,\ldots$.
+If a function $f_i$ is categorical then a constraint would usually take the form
+$f_i(m)=c$,
+whereas constraints for real-valued functions will usually take the form
+$f_j(m)\in (a, b)$ (i.e.\@ lies within a certain interval).
+
+However, in practice these constraints can often be incorporated into the base problem (equation~\ref{eqn:defn:molopt})
+and not dealt with explicitly.
+When constraints are known or easy to evaluate,
+the set of accessible molecules $\amolspace$ can simply be re-defined to exclude any molecules which violate constraints.\footnote{
+For example, if $\amolspace$ is originally a set of commercially purchasable molecules
+and a constraint is that the molecular weight (MW) must be under 500 $\mathrm{g\,mol^{-1}}$,
+$\amolspace$ can simply be redefined as $\amolspace' := \amolspace\cap\{m\,:\,m\in\molspace,\mathrm{MW}(m)<500\}$.
+}
+Alternatively, the constraints can be ``softened'' by adding a penalty for their violation
+into the optimisation objective.\footnote{
+For example, using the same molecular weight constraint as above,
+one could re-define $f$ to be $f'(m) := f(m) + \lambda \max(\mathrm{MW}(m)-500, 0)$,
+where $\lambda\in(0,\infty)$ controls the strength of the penalty.
+}
+
+Overall, because constraints can be incorporated into the base problem,
+optimisation problems with constraints are not explicitly studied in this thesis.
+Nonetheless, we mention constraints explicitly in order to clarify
+that methods in this thesis are only not applicable to highly-idealized unconstrained problems.
+
+\subsubsection{Variation 2: Knowledge of $f$}
+
+Although it is hard to quantify, ``knowledge'' of the function $f$
+greatly influences the difficulty of optimisation.
+For example, if 
+\begin{equation*}
+    f(m) = \left| \mathrm{MW}(m) - a \right|\ ,
+\end{equation*}
+namely the distance between a molecule's
+molecular weight and some target molecular weight $a$,
+it is simple to reason about the function and optimise it
+without actually doing experiments.
+On the other hand, if $f$ is the percentage of cancer cells killed by a molecule,
+then it is much harder to reason about the function $f$ because
+it depends on many complex and poorly-understood interactions between
+the molecule and the body.
+
+In practice, we tend to know very little about the most interesting functions $f$.
+Therefore, it is common to treat $f$ as a \emph{black-box} function,
+meaning the function is only known by its input-output pairs.
+In particular, this means one has no analytic expression for the function which can be exploited,
+no significant knowledge of global properties like Lipschitz constants,\footnote{
+    Technically, given a dataset of molecules and measurements
+    one can always compute a \emph{lower bound} on the Lipschitz constant.
+    However, if even a single pair of similar molecules have different properties
+    then this lower bound can potentially be very large.
+    Furthermore, as it is just a lower bound,
+    it may not be very useful if one cannot rule out the possibility
+    of the actual Lipschitz constant being much larger.
+}
+and no knowledge of local information such as gradients (not that gradients are applicable to molecules anyway).
+Less strict formulations such as grey-box optimisation have also been considered in other works,
+but will not be studied in this thesis.
+
+\subsubsection{Variation 3: Noise and measurement error}
+
+In laboratories, properties of molecules are measured with imperfect machines
+in a somewhat uncontrolled environment
+operated by humans who may make mistakes.
+This means that one does not generally have access to ``true'' evaluations of $f$:
+instead, one acquires a noisy measurement $y$,
+which can contain both random error (i.e.\@ repeating the same measurement will give different outcomes)
+and systematic error (i.e.\@ averaging repeated measurements may not converge to $f(m)$).
+This can be formalized as $y=f(m)+\epsilon$
+where $\epsilon$ is a random variable which can depend on $m$ and may have a non-zero mean.
+In practice however, a common assumption is that $\epsilon$ is normally distributed with
+mean zero and variance $\sigma^2$.
+
+\subsubsection{Variation 4: Data availability and acquisition}
+
+If one can perform unlimited evaluations of $f$ then optimisation is a trivial problem
+which can be tackled with exhaustive search.
+In practice, evaluating $f$ is too costly or time-consuming to permit exhaustive evaluation.
+Therefore, molecule optimisation problems are dominated by their access to data.
+This access to data comes in two forms.
+First, before optimisation a dataset of molecules and measurements
+$\mathcal{D}=\{(m_i,y_i)\}_{i=1}^N$
+is available.
+Second, during optimisation the algorithm will be able to acquire labels for at most $B$
+data points.
+We refer to $B$ as the evaluation \emph{budget}.
+Optimisation algorithms will typically iterate between choosing a molecule
+and making a measurement until the budget is exhausted.
+
+This evaluation strategy is sometimes called \emph{sequential evaluation},
+in contrast to \emph{batch evaluation} wherein multiple evaluations are made simultaneously.
+Batch evaluation is very common in chemistry since many scientific instruments
+readily 
+support parallel measurements:
+for example, spectrometers commonly measure optical absorptions of ``plate''
+of 96 liquid samples simultaneously.
+However, given a fixed budget, optimisation with batch evaluation is generally more
+challenging than with sequential evaluation.
+This is because one must commit to a large number of experiments upfront
+before seeing any results,
+while in the sequential setting the results of every experiment can be used to improve
+decisions at each step.
+
+\subsubsection{Variation 5: Measuring success}
+
+Naively, one might think to evaluate a molecule optimisation
+algorithm by checking whether it finds the true $\argmax$ in equation~\ref{eqn:defn:molopt}.
+Sadly this is infeasible since $\max_m{f(m)}$ is almost always unknown,
+and even if it where known it is unlikely that many algorithms
+would find it given a sufficiently small budget $B$.
+Not knowing $\max_m{f(m)}$ also precludes using regret as a metric,
+which is popular choice for many theoretical optimisation works.
+Finally, given that one only has access to noisy measurements $y$ of $f$,
+a success metric must only depend on measurements.
+
+Because of this, the most sensible metrics in molecule optimisation
+are the cumulative measurement value $$\sum_{i=1}^B y_i\ ,$$
+the maximum measurement value $$\displaystyle \max_{i\in\{1,\ldots,B\}}y_i\ ,$$
+or its generalization to the $k$th-best measurement value (also referred to as \emph{top-k}).
+The top-k metric is arguably the most realistic for many discovery settings
+where the goal is to find a small number of promising molecules.
+However, because it depends only on a small number of measurements
+it is also sensitive to measurement noise and randomness in the optimisation algorithm used.
+In this regard, the cumulative measurement value is more stable.
+
+
+\subsection{Supervised Learning}
+\label{sec:background:supervised learning}
+
+Let $\mathcal X$ denote an input space (e.g.\@ $\R^n$ or $\molspace$)
+and $\mathcal Y$ denote an output space (e.g.\@ $\R$ or $\{1,\ldots,C\}$).
+Supervised learning is the problem of directly approximating a property function $f:\mathcal X\mapsto \mathcal Y$
+with some \emph{surrogate model} $\hat{f}$.
+Although producing a surrogate model does not directly discover molecules,
+an accurate surrogate model could clearly be used to select promising molecules
+from a pre-defined list or to guide a more general molecule optimisation algorithm (\S\ref{sec:background:molopt}).
+In this thesis two variants of supervised learning are considered.
+
+\subsubsection{Single-Task Learning}
+
+This is the standard setting where a single model $\hat{f}$
+is produced to approximate labels (measurements) from a single dataset
+$\mathcal{D}:=\{(m_i,y_i)\}_{i=1}^N$.
+The model is typically produced to minimise a \emph{loss function}
+$\mathcal{L}(\hat f, \mathcal D)$ on $\mathcal D$.
+Examples of loss functions include misclassification error (for classification problems),
+mean squared error (for regression problems),
+or negative marginal likelihood (for probabilistic models).
+
+\subsubsection{Multi-task / Meta-learning Learning}
+
+In this setting a \emph{collection} of datasets $\{\mathcal D_1, \ldots, \mathcal D_M \}$
+is provided, and the goal is to produce a corresponding collection
+of models $\{\hat f_1, \ldots, \hat f_M\}$.
+It is essentially just multiple instances of single-task learning problems,
+and one approach is to produce a completely independent model for each dataset.
+However, this setting is also amenable to approaches wherein
+the models $\hat f_1, \ldots, \hat f_M$ are \emph{not} independent,
+for example they may share parameters.

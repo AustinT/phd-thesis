@@ -1,0 +1,79 @@
+
+\documentclass[a4paper,12pt,times,authoryear,online,index]{PhDThesisPSnPDF}
+
+
+
+
+\input{Preamble/preamble}
+
+\input{thesis-info}
+
+
+\ifdefineAbstract
+ \pagestyle{empty}
+ \includeonly{Declaration/declaration, Abstract/abstract}
+\fi
+
+
+\ifdefineChapter
+ \includeonly{Chapter3/chapter3}
+\fi
+
+\begin{document}
+
+\frontmatter
+
+\maketitle
+
+\include{Declaration/declaration}
+\include{Abstract/abstract}
+\include{Acknowledgement/acknowledgement}
+
+
+\tableofcontents
+
+\listoffigures
+
+\listoftables
+
+
+\printnomenclature
+
+\mainmatter
+\input{chapter0x-rfb/figures/schematics/styles.tex}  
+\include{nomenclature}  %
+\include{chapter01-intro/intro}
+\include{chapter02-background/background}
+\include{chapter0x-LSO/latent-space-optimisation}
+\include{chapter0x-ADKF/adkf}
+\include{chapter0x-TRF/tanimofo-random-features}
+\include{chapter0x-rfb/retro-fallback}
+\include{chapter-last-conclusion/conclusion}
+
+
+
+
+\begin{spacing}{0.9}
+
+
+\bibliographystyle{apalike}
+\cleardoublepage
+\bibliography{References/references,References/my-papers} %
+
+
+
+
+
+\end{spacing}
+
+
+\begin{appendices} %
+
+\include{chapter0x-TRF/appendix}
+\include{chapter0x-rfb/appendix}
+
+\end{appendices}
+
+\printthesisindex %
+
+\end{document}

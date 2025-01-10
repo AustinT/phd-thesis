@@ -1,0 +1,98 @@
+\chapter{Tanimoto Random Features}
+\label{chapter:trf}
+
+This chapter presents an algorithm to produce random feature
+approximations for the Tanimoto kernel,
+which is a popular kernel in cheminformatics
+(introduced in \S\ref{sec:background:mol-kernels}).
+It was published as a conference paper
+in NeurIPS 2023 \citep{tripp2023tanimoto}.
+This conference paper was jointly written with
+Prof.\@ Sergio Bacallado (Cambridge Statistical Laboratory),
+my supervisor José Miguel Hernández-Lobato,
+and Miguel's postdoc Sukriti Singh.
+The initial idea for this algorithm was proposed by Sergio,
+and I helped refine the ideas and conducted experiments.
+The manuscript was primarily written by myself and Sergio,
+although all authors contributed.
+
+\section{Motivation}
+\label{sec:trf:motivation}
+
+The methods presented in chapters \ref{chapter:lso} and \ref{chapter:adkf}
+use deep-kernel Gaussian process models to predict molecular properties.
+However, in one way or another both of these methods require large amounts of data
+to fit the parameters of the underlying neural network.
+With a small amount of data,
+perhaps the best one can do is use a simple classical cheminformatics kernel,
+such as a kernel on molecular fingerprints (e.g.\@ Tanimoto kernel)
+or any one of many previously proposed graph kernels (see \S\ref{sec:background:mol-kernels}).
+
+Unfortunately, as graph kernels are less widely used than kernels in $\R^n$,
+there are fewer methods which build on top of them.
+In particular, there are fewer approximations to these kernels
+which would allow GPs to scale to large datasets.
+Inducing point methods (\S\ref{sec:background:approx-gp-inference})
+are in principle agnostic to the kernel used,
+but in practice the inducing points are often chosen using gradient-based optimisation,
+which is not applicable when the inducing points are discrete objects like graphs.
+Random feature methods are specific to a particular kernel,
+and despite a lot of recent work on random features for kernels defined
+\emph{on nodes within a graph} \citep{reid2023quasi,reid2024repelling,reid2024universal},
+there is a lack of work on random features for kernels \emph{between graphs}.
+
+This work stemmed from a handful of insights which allowed us to construct two kinds of random features for the Tanimoto kernel.
+Combined with molecular fingerprint features (\S\ref{sec:background:fingerprints}),
+this effectively creates a scalable graph kernel applicable to large molecular datasets.
+Section~\ref{sec:trf:background} provides some background information,
+and the main contributions of this chapter are presented in
+sections~\ref{sec:minmax-rf} and \ref{sec:t-dp}.
+Section~\ref{sec:trf:experiments} presents experiments.
+
+\section{Background: Tanimoto kernel over \texorpdfstring{$\R^n$}{Rn}}
+\label{sec:trf:background}
+
+The Tanimoto kernel $T$ was defined over pairs of \emph{sets} in chapter~\ref{chapter:background} (equations~\ref{eqn:background:tanimoto-for-sets}
+and \ref{eqn:background:tanimoto-for-multisets}).
+However, because this chapter introduces several Tanimoto-like functions, we will introduce
+some additional notation.
+First, because this chapter is concerned with kernels over sets of vectors,
+we write $x_i$ to refer to the $i$th element of a vector and $x^{(i)}$ to denote the $i$th vector in a list.
+Second, note that if $S$ is a subset of a finite set $\Omega$,
+$S$ can be represented as a binary \emph{indicator vector} $s\in\{0,1\}^{|\Omega|}$,
+where $s_i=1$ if and only if the $i$th element of $\Omega$ is in $S$.
+This also holds true for multi-sets, although in this case $s_i$ is the number of times the $i$th element appears in $S$.
+
+Letting $d=|\Omega|$,
+the Tanimoto kernel can be interpreted as a kernel over non-negative vectors in $\R^d_{\geq0}$:
+\begin{equation}\label{eqn:minmax-kernel}
+    T_{MM}(x, x') = \frac{\sum_i \min(x_i, x'_i)}{\sum_i \max(x_i, x'_i)}\,.
+\end{equation}
+This kernel is sometimes referred to as the ``Min-Max kernel'',
+although in this chapter we will simply refer to it as $T_{MM}$.
+
+The remainder of this chapter will simply consider the problem of defining random features
+for the Tanimoto kernel over $\R^d_{\geq0}$,
+rather than over fingerprint features specifically.
+Although fingerprints are defined as sets of subgraphs in section~\ref{sec:background:fingerprints},
+in practice these subgraphs are always hashed into $\mathbb{N}$,
+thereby making the application of these random features to fingerprints straightforward.
+
+
+\input{chapter0x-TRF/text/3-minmax}
+
+\input{chapter0x-TRF/text/4-tdp}
+
+\input{chapter0x-TRF/text/5-related-work}
+
+\input{chapter0x-TRF/text/6-experiments}
+
+\input{chapter0x-TRF/text/7-conclusion}
+
+\section{Retrospective and predictions}
+
+The Tanimoto kernel is widely used, and I have spoken to chemists at conferences who have expressed interest in this work.
+That being said, for simply making predictions on a large number of molecules
+our experiments suggest that inducing point methods are more effective than random features.
+I predict this work will primarily be useful in Bayesian optimisation applications
+which need approximate posterior samples (e.g.\@ for Thompson sampling).

@@ -1,0 +1,131 @@
+\chapter{Generating molecules in the latent space of generative models}
+\label{chapter:lso}
+
+\ifpdf
+    \graphicspath{{chapter0x-LSO/figures}}
+\else
+    \graphicspath{}
+\fi
+
+\newacronym{dgm}{DGM}{deep generative model}
+\newacronym{lmo}{LSO}{latent space optimisation}
+\newacronym{vae}{VAE}{variational autoencoder}
+\newacronym{gan}{GAN}{generative adversarial network}
+\newacronym{rl}{RL}{reinforcement learning}
+\newacronym{bo}{BO}{Bayesian optimisation}
+\newacronym{sgp}{SGP}{sparse Gaussian process}
+
+\newcommand{\codelink}{\url{https://github.com/cambridge-mlg/weighted-retraining}
+}
+\newcommand{\bestchemscore}{27.84}
+
+This chapter presents an approach
+to Bayesian optimisation in molecule space,
+originally published as
+a conference paper in NeurIPS 2020 \citep{tripp2020sample}.
+This conference paper was jointly written with
+my supervisor José Miguel Hernández-Lobato
+and fellow PhD student Erik Daxberger.
+I had the original idea for this project
+and conducted experiments jointly with Erik.
+All three of us co-wrote the manuscript.
+
+\section{Motivation}
+\label{sec:lso:motivation}
+
+Solving molecule optimisation problems (\S\ref{sec:background:molopt})
+with \gls{bo} (\S\ref{sec:background:bayesopt}) poses two challenges
+above and beyond BO in $\R^n$:
+
+\begin{enumerate}
+    \item The search space ($\amolspace$) is discrete,
+        impeding the use of gradient-based methods to optimise the acquisition function
+        $\alpha$ in line~\ref{alg:bo:maximise acqn fn} of algorithm~\ref{alg:general-bayesopt}.
+    \item A probabilistic model over input graphs $p(\hat f)$
+        must be created in line~\ref{alg:bo:fit model} of algorithm~\ref{alg:general-bayesopt},
+        and there are arguably fewer options for such models in graph space.
+\end{enumerate}
+Moreover, these challenges are not unique to molecules:
+any optimisation problem in a large and non-Euclidean input space will face similar challenges
+(e.g.\@ design of protein sequences, designing neural network architectures).
+
+One potential approach to tackle both challenges
+is to perform optimisation over the latent variable of a generative model,
+which we will refer to as \emph{\gls{lmo}}.
+This approach has been proposed and used by many recent works
+\citep{gomez2018,kusner_grammar_2017,lu2018structured,eismann_bayesian_2018,luo2018neural,kajino_molecular_2019,nguyen_synthesizing_2016,dai_syntax-directed_2018,daxberger2019bayesian,griffiths_constrained_2020,mahmood_cold_2019,antoran_getting_2020}.
+We will give a brief overview of \gls{lmo} below.
+
+Let $\X$ denote a general input space (e.g.\@ $\molspace$),
+$\Z$ denote some \emph{latent space},
+and $f:\X\mapsto\R$ denote an optimisation objective.
+\Gls{lmo} first requires defining a \emph{\gls{dgm}}
+$g: \Z\mapsto\X$ 
+and a \emph{latent objective model} $\hat f: \Z\mapsto\R$
+to approximate $f$ at the output of $g$, namely $f(g(\z))\approx \hat f(\z),\ \forall \z\in\Z$.
+As part of this process,
+an approximate inverse to $g$, $q:\X\mapsto\Z$
+may be created to encode a set of known data points in $\X$ into $\Z$.
+Then, the acquisition function $\alpha$
+is optimised over $\Z$ instead of $\X$.
+When a point $\bm{z}^*$ is chosen,
+it is ``decoded'' into $x^*:=g(\bm{z}^*)$ in order to be evaluated.
+Note that in this chapter we consider \emph{noiseless} evaluation,
+i.e.\@ $y_i=f(x_i)$.
+The potential advantage of \gls{lmo} is that $\Z$ can be continuous and low-dimensional (e.g.\@ $\R^n$),
+making defining $\hat f$ and optimising acquisition functions easier.
+
+Many prior works using \gls{lmo} apply it in a \textit{post-hoc} manner
+by training a generative model decoupled from any optimisation task.
+The first contribution in this chapter
+a conceptual argument of why such decoupling may limit the performance of \gls{lmo} methods
+(\S\ref{sec:lso:limitations}).
+The second contribution of this chapter is a method desired to overcome these limitations
+by combining dataset weighting and periodic retraining of the generative model (\S\ref{sec:lso:main}).
+Finally, we show that this
+method produces promising results on several empirical benchmarks (\S\ref{sec:lso:experiments}).
+
+
+\input{chapter0x-LSO/sections/3-failure_modes.tex}
+\input{chapter0x-LSO/sections/4-main.tex}
+\input{chapter0x-LSO/sections/5-related_work.tex}
+\input{chapter0x-LSO/sections/6-experiments.tex}
+\input{chapter0x-LSO/sections/7-conclusion.tex}
+
+\section{Retrospective}
+
+Since the publication of this chapter over three years ago
+as \citet{tripp2020sample},
+it has gone on to be my single most-cited work
+(over 100 citations as of February 2024 according to Google Scholar).
+Most papers citing \citet{tripp2020sample}
+simply refer to it for the term ``latent space optimisation'',
+or as one approach out of many for optimising molecular properties.
+A few works do notably build upon these ideas though.
+\citet{stanton2022accelerating} uses rank-based weights to sample
+protein sequences in a similar latent-space BO algorithm.
+\citet{lee2023advancing} and \citet{maus2022local} both train
+a surrogate model $h:\Z\mapsto\R$ \emph{jointly} with the generative model,
+whereas in this work it was still fit afterwards.
+\citet{maus2022local} and \citet{notin2021improving} both propose methods
+to better-define the optimisation bounds within $\Z$ to avoid
+out-of-distribution latent inputs.
+Overall, this work has clearly prompted interest in latent space optimisation
+methods and inspired follow-up works.
+
+Despite this, I am currently pessimistic about the potential of \gls{lmo}
+methods to be highly useful for molecule discovery.
+There are two main reasons for this.
+First, all of these works required large labelled datasets for some part of the algorithm,
+despite many molecule discovery tasks having very few labelled data points.
+Although in principle one could apply any of these methods with smaller datasets,
+it is very likely that using smaller datasets would lead to overfitting
+(I observed this in my own experiments performed after the publication of \citet{tripp2020sample}).
+Second, although there may not be a lot of kernels available for arbitrary structured inputs,
+graph- and molecule-structured inputs are well-studied and there are many kernels
+available for such inputs (see~\S\ref{sec:background:gps}).
+Unlike kernels produced via a latent space,
+established graph kernels are likely to be more interpretable and 
+vary ``smoothly'' with respect to molecular structure.
+My opinion is that, in low-data settings, established graph kernels will
+generally induce a more sensible prior over objective functions.

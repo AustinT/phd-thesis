@@ -1,0 +1,252 @@
+\section{Proofs}\label{proofs in appendix}
+
+\subsection{Proof of Theorem \ref{thm:general-minmax-rf}}\label{apdx:minmax-rf-proof}
+
+    For simplicity, we drop the subscripts $h,\Xi$ from probabilities and expectations. To show that the random features are unbiased, we re-write the expectation:
+    \begin{align*}
+    &\mathbb{E}\left[ \phi_{\Xi,h}(x)\cdot \phi_{\Xi,h}(x')\right]  & \\
+        &= \Pr(h(x)=h(x')) \mathbb{E} \left[ \Xi_{h(x)}\Xi_{h(x')} | h(x)=h(x')\right]  \nonumber & \\
+           &\quad+ \Pr(h(x)\neq h(x')) \mathbb{E} \left[ \Xi_{h(x)}\Xi_{h(x')} | h(x)\neq h(x')\right] &\\
+        &= \Pr(h(x)=h(x')) \mathbb{E} \left[ \Xi_{h(x)}^2 \right] &\text{(}\Xi_{h(x)}=\Xi_{h(x')}\text{)} \nonumber \\
+        &\quad+ \Pr(h(x)\neq h(x')) \mathbb{E} \left[\Xi_{h(x)}\right] \mathbb{E} \left[\Xi_{h(x')}\right] & (\Xi_{h(x)},\Xi_{h(x')}\text{ independent)} \\
+        &= 1\cdot \Pr(h(x)=h(x')) + 0\cdot \Pr(h(x)\neq h(x')) &\text{(assumed moments of }\xi) \\
+        &= T_{MM}(x,x')& \text{($h(x)$ is an unbiased hash for $T_{MM}$)}
+    \end{align*}
+
+    Because in general $\mathbb{V}[X]=\mathbb{E}[X^2]-\mathbb{E}[X]^2$,
+    and we have
+    \begin{equation*}
+    \mathbb{E}\left[ \phi_{\Xi,h}(x)\cdot \phi_{\Xi,h}(x')\right]=T_{MM}(x,x')  \ ,
+    \end{equation*}
+    we only need to compute
+    $\mathbb{E}\left[ \left(\phi_{\Xi,h}(x)\cdot \phi_{\Xi,h}(x')\right)^2\right]$.
+    This can be done using a similar decomposition:
+    \begin{align*}
+        \mathbb{E}\left[ \left(\phi_{\Xi,h}(x)\cdot \phi_{\Xi,h}(x')\right)^2\right]&= \Pr(h(x)=h(x')) \mathbb{E}\left[ \left(\phi_{\Xi,h}(x)\cdot \phi_{\Xi,h}(x')\right)^2|h(x)=h(x')\right] \nonumber \\
+        &\quad + \Pr(h(x)\neq h(x')) \mathbb{E}\left[ \left(\phi_{\Xi,h}(x)\cdot \phi_{\Xi,h}(x')\right)^2|h(x)\neq h(x')\right] \\
+        &= T_{MM}(x,x') \mathbb{E}\left[ \Xi_{h(x)}^4 \right] \nonumber \\
+        &\quad + \left(1-T_{MM}(x,x')\right) \mathbb{E}\left[ \Xi_{h(x)}^2 \right] \mathbb{E}\left[ \Xi_{h(x')}^2 \right] \\
+        &= T_{MM}(x,x') \mathbb{E}\left[ \Xi_{h(x)}^4 \right] + \left(1-T_{MM}(x,x')\right) 
+    \end{align*}
+    Here, the last step follows from the moments of $\Xi$ which were fixed by assumption.
+    Subtracting $T_{MM}(x,x')^2$ from the above yields the expression for the variance.
+
+By Jensen's inequality, $\E[\xi^4]\geq \E[\xi^2]^2$, and $\E[\xi^2]=1$ by assumption, so $\E[\xi^4]\geq1$.
+    Substituting $\E[\xi^4]=1$ into the equation for $\mathbb{V}(\phi_{\Xi,h}(x)\cdot \phi_{\Xi,h}(x'))$ gives the lower bound and completes the proof.
+
+\subsection{Proof of Theorem \ref{thm:tdp-is-pd} and Corollary \ref{thm:tdp-is-metric}}\label{apdx:tdp-is-pd-proof}
+
+Take any pair of inputs $x,y\neq 0$ in $\R^d$. By the Cauchy--Schwarz inequality, we have
+\begin{align}
+     \label{eq:term-bound}
+\Bigg| \frac{x\cdot y}{\|x\|^2 + \|y\|^2} \Bigg|\leq \frac{\|x\|\|y\|}{\|x\|^2 + \|y\|^2} \leq \left(\|x\|/\|y\| + \frac{1}{\|x\|/\|y\|} \right)^{-1} \leq \frac{1}{2}.
+\end{align}
+Now, we can write the function $T_{DP}$ as
+\begin{align}
+    T_{DP}(x,y) = \frac{x\cdot y}{\|x\|^2 + \|y\|^2 - x\cdot y} &= \frac{\frac{x\cdot y}{\|x\|^2 + \|y\|^2}}{1 - \frac{x\cdot y}{\|x\|^2 + \|y\|^2}} \label{eqn:power-series1} \\
+    &= \frac{x\cdot y}{\|x\|^2 + \|y\|^2}\left(\frac{1}{1 - \frac{x\cdot y}{\|x\|^2 + \|y\|^2}}\right) \label{eqn:power-series2} \\
+    &= \frac{x\cdot y}{\|x\|^2 + \|y\|^2} \sum_{r=0}^\infty \left(\frac{x\cdot y}{\|x\|^2 + \|y\|^2}\right)^r \label{eqn:power-series3} \\
+    &= \sum_{r=1}^\infty \left(\frac{x\cdot y}{\|x\|^2 + \|y\|^2}\right)^r \label{eqn:power-series},
+\end{align}
+where in the identity (\ref{eqn:power-series3}) we use the bound in (\ref{eq:term-bound}) to assert that the series is bounded by $2^{-r}$ and thus absolutely convergent.
+
+Furthermore, because $(x,y)\mapsto x\cdot y$ is a positive definite kernel, and so is
+$$(x,y)\mapsto \frac{1}{\|x\|^2+\|y\|^2 } = \int_{0}^\infty  e^{-(\|x\|^2+\|y\|^2)t}  dt,$$
+each summand in the power series is positive definite because it is a product of positive definite kernels.
+Hence, as sums and limits of positive definite kernels are positive definite, and the power series is convergent, $T_{DP}$ is positive definite in the space $\R^d\setminus \{0\}$. The extension to include the vector $0\in\R^d$ is straightforward, as any Gram matrix including this vector is block diagonal. We conclude that $T_{DP}$ is a positive definite kernel in $\R^d$. 
+
+To prove Corollary \ref{thm:tdp-is-metric}, note that by the Moore--Aronszajn theorem, there exists an RKHS of functions $(\mathcal H, \langle\cdot\rangle_\mathcal{H})$ on $\R^d$ with reproducing kernel $T_{DP}$, such that for any $x,y\in\R^d$, $\langle T_{DP}(x,\cdot), T_{DP}(y,\cdot) \rangle_\mathcal{H} = T_{DP}(x,y)$. Then, observe that 
+\begin{align*}
+\|T_{DP}(x,\cdot)-T_{DP}(y,\cdot)\|_\mathcal{H}^2
+&= \langle T_{DP}(x,\cdot)- T_{DP}(y,\cdot),T_{DP}(x,\cdot)- T_{DP}(y,\cdot) \rangle_\mathcal{H} \\
+&= \langle T_{DP}(x,\cdot),T_{DP}(x,\cdot) \rangle_\mathcal{H} 
++ \langle T_{DP}(y,\cdot), T_{DP}(y,\cdot) \rangle_\mathcal{H} \\
+& ~~~~~- 2 \langle T_{DP}(x,\cdot), T_{DP}(y,\cdot) \rangle_\mathcal{H} \\
+& = 2 - 2T_{DP}(x,y),
+\end{align*}
+where in the final identity, we use the fact that $T_{DP}(x,x)=1$ for all $x\in\R^d$. Dividing by 2 and taking square roots on both sides, we obtain
+\begin{align*}
+\Big\|\frac{1}{2}T_{DP}(x,\cdot)-\frac{1}{2}T_{DP}(y,\cdot)\Big\|_\mathcal{H} = \sqrt{1-T_{DP}(x,y)},
+\end{align*}
+where the RKHS norm on the left is clearly a distance metric. 
+
+\subsection{Proofs and derivations for prefactor random features}
+\label{apdx:prefactor-sketch}
+
+\subsubsection{Scalar random features (\Cref{scalar prefactor features lemma})}
+First, we present a derivation for the scalar random features for the prefactor $(\|x\|^2+\|x'\|^2)^{-r}$ from \Cref{scalar prefactor features lemma}.
+As the kernel is a function of $\|x\|^2$ and $\|x'\|^2$, we can deal, without loss of generality, with the one-dimensional case. We begin by observing that for any $a,b>0$,
+\begin{align}
+\left(\frac{1}{a+b}\right)^r 
+&= \int_0^\infty e^{(1/2-a)t}e^{(1/2-b)t} \frac{t^{r-1} e^{-t}}{\Gamma(r)}dt \nonumber \\
+&= \int_0^\infty e^{(1/2-a)t}e^{(1/2-b)t}c^{-r}e^{(c-1)t} \frac{c^r t^{r-1} e^{-ct}}{\Gamma(r)}dt \nonumber \\
+&= \int_0^\infty e^{(1/2-a)t}e^{(1/2-b)t}\frac{c^{-s}e^{(c-1)t}t^{r-s}\Gamma(s)}{\Gamma(r)} \frac{c^s t^{s-1} e^{-ct}}{\Gamma(s)}dt. \label{1}
+\end{align}
+Defining the function
+\begin{align*}
+\varphi_Z(a) = e^{(1/2-a)Z} Z^{(r-s)/2}\left(\frac{c^{-s}e^{(c-1)Z}\Gamma(s)}{\Gamma(r)} \right)^{1/2}
+\end{align*}
+and letting $Z\sim\text{Gamma}(s,c)$, we recognise the right-hand side of (\ref{1}) as the expectation of $\varphi_Z(a)\varphi_Z(b)$. Hence, 
+\begin{align*}
+\left(\frac{1}{a+b}\right)^r = \E(\varphi_Z(a)\varphi_Z(b)).
+\end{align*}
+\emph{This proves \Cref{scalar prefactor features lemma}.}
+
+\subsubsection{QMC random features (\Cref{lemma:def QMC prefactor features})}
+Next we motivate and derive our QMC random features for the prefactor,
+proving \Cref{lemma:def QMC prefactor features}.
+It is possible to sketch $a$ with a vector
+$\varphi(a) = \frac{1}{\sqrt{M}}(\varphi_{Z_1}(a),\dots,\varphi_{Z_M}(a))$
+where $Z_1,\dots,Z_M$ are independent copies of $Z$.
+This makes the kernel approximation $\varphi(a)\cdot \varphi(b)$
+a Monte Carlo estimator of the expectation,
+with error decreasing with the dimension $M$
+of the sketch at the standard rate $\mathcal O(M^{-1/2})$. 
+
+However, we shall instead consider a Quasi-Monte Carlo (QMC) estimator with an error decreasing at the faster rate $\mathcal O(M^{-1})$.
+Let $\gamma_{s,c}$ be the inverse cumulative distribution function of a Gamma$(s,c)$ random variable. With a change of variables, we can write the integral (\ref{1}) as 
+\begin{align}
+    \label{eq:ch-of-variables}
+\left(\frac{1}{a+b}\right)^r 
+& = \frac{c^{-s}\Gamma(s)}{\Gamma(r)} \int_0^1 e^{-(a+b-c)\gamma_{s,c}(u)} (\gamma_{s,c}(u))^{r-s}  du.
+\end{align}
+Fix $n>0$, $u\in[0,1]$, and let $u_i = (u + i/M)- \lfloor u + i/M \rfloor $ for $i=1,\dots,M$. We can now define features $\phi_{u,r}(a)\in \R^M$, as in Section \ref{sec:tdp-rf}:
+\begin{align*}
+\phi_{u,r,i}(a) =\frac{1}{\sqrt M}\sqrt{\frac{c^{-s}\Gamma(s)}{\Gamma(r)} } e^{-(a-c/2)\gamma_{s,c}(u_i) }(\gamma_{s,c}(u_i))^{(r-s)/2}.
+\end{align*}
+A QMC estimator for $(a+b)^{-r}$ is given by the dot product $\phi_u(a)^T \phi_u(b)$.
+This estimator is unbiased:
+\begin{lemma*}
+If $u$ is random and $\mathcal U(0,1)$, then for all $a,b>0$,
+\begin{align*}
+\left(\frac{1}{a+b}\right)^r = \E(\phi_{u,r}(a)\cdot \phi_{u,r}(b)).
+\end{align*}
+\end{lemma*}
+\begin{proof}
+By linearity of expectation,
+\begin{align*}
+\E(\phi_{u,r}(a)\cdot \phi_{u,r}(b)) = \frac{1}{M}\sum_{i=1}^M \E\left[\frac{c^{-s}\Gamma(s)}{\Gamma(r)}  e^{-(a+b-c)\gamma_{s,c}(u_i) }(\gamma_{s,c}(u_i))^{r-s} \right].
+\end{align*}
+Observing that each $u_i\sim\mathcal U(0,1)$, the result follows by Eq.\ (\ref{eq:ch-of-variables}).
+\end{proof}
+This lemma is equivalent to \Cref{lemma:def QMC prefactor features}, thereby proving it.
+
+\subsubsection{Relative error bound (\Cref{QMC error})}
+
+In the following lemma, we establish a basic Quasi-Monte Carlo error bound.
+
+\begin{lemma}\label{QMC basic lemma} 
+For any $u\in[0,1]$, $c\leq (a+b)$, $0<s \le r $,
+\begin{align*}
+\Big| \frac{1}{(a+b)^r} - \phi_{u,r}(a) \cdot \phi_{u,r}(b) \Big| \leq \frac{2}{M} \frac{c^{-s}\Gamma(s)}{\Gamma(r)} \left(\frac{r-s}{e(a+b-c)}\right)^{r-s}.
+\end{align*}
+\end{lemma}
+
+\begin{proof}
+Consider the QMC approximation of an integral $\int_0^1 f(x)dx$ for a function $f$ of bounded variation, using a regular net of $n$ points. It is well known that the error of this approximation is bounded above by $V(f)/n$ where $V$ is the total variation norm. Hence, 
+\begin{align*}
+\Big| \frac{1}{(a+b)^r} - \phi_{u,r}(a)\cdot \phi_{u,r}(b) \Big| \leq \frac{1}{n} \frac{c^{-s}\Gamma(s)}{\Gamma(r)} V(f)
+\end{align*}
+for $f(u)= e^{-(a+b-c)\gamma_{s,c}(u)} (\gamma_{s,c}(u))^{r-s}$ on $0\leq u\leq 1$. As $\gamma_{s,c}$ is monotone increasing, $f$ is unimodal tending to $0$ as $u\to 0$ and $u\to 1$. Thus $V(f)=2\max_{0\le u\le 1} f(u)$.
+The maximum of $f$ is attained where $\gamma_{s,c}(u)= (r-s)/(a+b-c)$, hence 
+\begin{align*}
+V(f) = 2\left(\frac{r-s}{e(a+b-c)}\right)^{r-s}. & \qedhere
+\end{align*}
+\end{proof}
+
+We are interested in sketching $( \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2)^{-r}$ for every pair of inputs $x^{(i)}, x^{(j)}$ in a dataset $\{x^{(1)},\dots,x^{(n)}\}$. The previous lemma can be used to choose values $c$ and $s\le r$ which minimise the relative error
+\begin{align*}
+E_{i,j} = \frac{   \phi_{u,r}(  x^{(i)} )\cdot \phi_{u,r}( x^{(j)} ) - (\| x^{(i)} \| ^2+ \| x^{(j)} \| ^2)^{-r} }{( \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2)^{-r}} .
+\end{align*}
+
+The kernel $k(x,y)$ is invariant to scaling $x$ and $y$, \emph{i.e.}, $k(x,y)=k(\ell x,\ell y)$ for all $\ell>0$. Thus, if we are interested in approximating the Gram matrix for $\{x^{(1)},\dots,x^{(n)}\}$, we may assume without loss of generality that $\max_i  \| x^{(i)} \| ^2 = 1$ and let $\zeta = \min_i  \| x^{(i)} \| ^2$. Here, $\zeta$ will act as a condition number for the dataset, which will determine the error of the random feature approximation.
+
+By Lemma \ref{QMC basic lemma}, we have
+\begin{align*}
+|E_{i,j} |
+&\leq ( \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2)^r \frac{2}{M} \frac{c^{-s}\Gamma(s)}{\Gamma(r)} \left(\frac{r-s}{e( \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2-c)}\right)^{r-s} \\
+&= ( \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2)^r \frac{2}{M} \frac{c^{-s}\Gamma(s)(r-s)^{r-s}}{\Gamma(r)e^{(r-s)}} \left(\frac{1}{ \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2-c}\right)^{r-s} \\
+&= \frac{2}{M} \frac{\Gamma(s)(r-s)^{r-s}}{\Gamma(r)e^{(r-s)}} \left(1-\frac{c}{ \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2}\right)^{s-r} \left(\frac{c}{ \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2}\right)^{-s} .
+\end{align*} 
+The last two factors are log-convex in $c/( \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2)>0$. Hence, for a fixed $c$, the product
+$$\left(1-\frac{c}{ \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2}\right)^{s-r} \left(\frac{c}{ \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2}\right)^{-s} $$
+ is maximised at either $ \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2=2$ or $ \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2=2\zeta$. Therefore,
+\begin{align*}
+|E_{i,j}|
+&\leq \frac{2}{M} \frac{\Gamma(s)(r-s)^{r-s}}{\Gamma(r)e^{(r-s)}} \left[\left(1-\frac{c}{2}\right)^{s-r} \left(\frac{c}{2}\right)^{-s} \vee \left(1-\frac{c}{2\zeta}\right)^{s-r} \left(\frac{c}{2\zeta}\right)^{-s}\right].
+\end{align*} 
+Using again the log-convexity of $y\mapsto (1-y)^{s-r} y^{-s}$, we find that 
+$$\left(1-\frac{c}{2}\right)^{s-r} \left(\frac{c}{2}\right)^{-s} $$
+is minimised as a function of $c$ at $c_1 = 2s/r$. And
+$$\left(1-\frac{c}{2\zeta}\right)^{s-r} \left(\frac{c}{2\zeta}\right)^{-s}$$
+is minimised at $c_2 = 2\zeta s/r$. Recall that Lemma \ref{QMC basic lemma} requires $0\le c\leq  \| x^{(i)} \| ^2+ \| x^{(j)} \| ^2$ for all $i,j$ or $0\le c\leq 2\zeta$, which is satisfied by $c_2$ when $s\le r$, but not necessarily by $c_1$. Thus, it is reasonable to set $c=c_2$, which leads to
+\begin{align*}
+|E_{i,j}| 
+&\leq \frac{2}{M} \frac{\Gamma(s)(r-s)^{r-s}}{\Gamma(r)e^{(r-s)}} \left[\left(1-\frac{\zeta s}{r}\right)^{s-r} \left(\frac{\zeta s}{r}\right)^{-s} \vee \left(1- \frac{s}{r}\right)^{s-r} \left( \frac{s}{r}\right)^{-s}\right] \\
+&\leq \frac{2}{M} \frac{\Gamma(s)(r-s)^{r-s}r^{r}s^{-s}}{\Gamma(r)e^{(r-s)}} \left[\left(r-\zeta s\right)^{s-r} \zeta^{-s} \vee \left(r- s\right)^{s-r} \right] \\
+&\leq \frac{2}{M} \frac{\Gamma(s)(s/e)^{-s}}{\Gamma(r)(r/e)^{-r}} \left[\left(\frac{r-\zeta s}{r-s}\right)^{s-r} \zeta^{-s} \vee 1 \right] .
+\end{align*} 
+When $\zeta=1$ (all inputs $x^{(i)}$ have the same norm), setting $s=r$ leads to an  error bound of $4/n$. However, small values of $\zeta$ can make the upper bound blow up unless we tune $s$ suitably. For a given value of $\zeta$, this upper bound could be maximised numerically over $0<s\le r$. However, setting $s = r\zeta$, we obtain
+\begin{align*}
+|E_{i,j}|
+&\leq \frac{2}{M} \frac{\Gamma(r\zeta)(r\zeta /e)^{-r\zeta}}{\Gamma(r)(r/e)^{-r}} \left[\left(\frac{1-\zeta^2}{1-\zeta}\right)^{r(\zeta-1)} \zeta^{-r\zeta} \vee 1 \right]  \\
+&\leq \frac{2}{M} \frac{\Gamma(r\zeta)\zeta^{-r\zeta}}{\Gamma(r)} (r/e)^{r(\zeta-1)}\left[\left(\left(\frac{1-\zeta^2}{1-\zeta}\right)^{\zeta-1} \zeta^{-\zeta}\right)^r \vee 1 \right] \\
+&\leq \frac{2}{M} \frac{\Gamma(r\zeta)\zeta^{-r\zeta}}{\Gamma(r)} (r/e)^{r(\zeta-1)} \rho^r
+\end{align*} 
+where $\rho\approx 1.2$ is defined by 
+$$\rho := \max_{0\leq \zeta\leq 1}~\left(\frac{1-\zeta^2}{1-\zeta}\right)^{\zeta-1} \zeta^{-\zeta}.$$
+This proves the first inequality in Lemma \ref{QMC error}. 
+
+To conclude the proof of Lemma \ref{QMC error}, we study the behaviour of the upper bound as it diverges when $\zeta\to 0$. Using the asymptotic $\Gamma(x)\sim 1/x$ as $x\to0$, we have
+\begin{align*}
+\frac{2}{M} \frac{\Gamma(r\zeta)\zeta^{-r\zeta}}{\Gamma(r)} (r/e)^{r(\zeta-1)} \rho^r \sim (M\zeta)^{-1} \frac{2(r/e)^{-r} \rho^r}{r\Gamma(r)} 
+\end{align*}
+where $\frac{2(r/e)^{-r} \rho^r}{r\Gamma(r)}$ is bounded for $r\ge 1$. Therefore, the upper bound is $\mathcal O(M^{-1}\zeta^{-1})$.
+This completes the proof.
+
+
+
+
+\subsection{Rank of Tanimoto Kernels}\label{apdx:proof-of-kernel-rank}
+
+\begin{lemma}
+    There does not exist an exact finite-dimensional feature map for either $T_{MM}$ or $T_{DP}$.
+\end{lemma}
+\begin{proof}
+    We will use a proof by contradiction, first focusing on $T_{MM}$.
+    The setup for the contradiction is as follows: suppose there existed an exact feature map
+    $f:\R^d\mapsto\R^M$
+    such that $T_{MM}(x,y)=f(x)\cdot f(y)\ \forall x,y\in\R^d$.
+    This would imply that any kernel matrix between $n$ points $X$
+    could be written as an inner product
+    \begin{equation*}
+        T_{MM}(X,X)=f(X)^T f(X) \ .
+    \end{equation*}
+    Because $f$ outputs $M$ dimensional vectors this would imply the resulting matrix has rank at most $M$.
+    Therefore, under this hypothesis it should not be possible to form a kernel matrix of more than $M$ inputs which is full-rank (invertible). Our contradiction will be to construct such a matrix.
+
+    We now present a way to construct a full-rank $T_{MM}$ kernel matrix with any number of points $n$.
+    Consider the set of points $\{a^{(i)}\}_{i=1}^n$ where $a^{(i)}= (2n)^i \in \R$.
+    For any $i$, we have that $T_{MM}(a^{(i)}, a^{(i)})=1$
+    and if $n\geq 2$ then
+    \begin{align*}
+        \sum_{j\neq i} | T_{MM}(a^{(i)}, a^{(j)}) | = \sum_{j\neq i} (2n)^{-|i-j|} \leq \sum_{j\neq i} \frac{1}{2n} \leq \frac{1}{2}\ ,
+    \end{align*}
+    meaning the kernel matrix is \emph{strictly diagonally dominant} and therefore non-singular.
+    Since such a construction exists for any $n$,
+    setting $n=M+1$ contradicts the assumption of an $M$-dimensional feature map, and repeating this argument for all finite $M$ proves that no finite-dimensional feature map can exist for $T_{MM}$.
+
+    The proof for $T_{DP}$ is almost identical.
+    Consider the same sequence of points as in the preceding paragraph.
+    For any $i$, we have that $T_{DP}(a^{(i)}, a^{(i)})=1$ and
+    \begin{align*}
+        \sum_{j\neq i} | T_{DP}(a^{(i)}, a^{(j)}) | = \sum_{j\neq i} \frac{1}{(2n)^{|i-j|} + (2n)^{-|i-j|} - 1} \leq \sum_{j\neq i} \frac{1}{2n-1} < 1\ ,
+    \end{align*}
+    meaning the kernel matrix for $T_{DP}$ is also strictly diagonally dominant,
+    thereby also precluding the existence of an $M$-dimensional feature map for finite $M$.
+
+
+\end{proof}
+
+This result suggests that the best we can hope for is an \emph{approximate} finite-dimensional feature map for both kernels,
+which is exactly what is provided in this chapter.

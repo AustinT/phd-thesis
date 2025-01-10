@@ -1,0 +1,243 @@
+\chapter{Conclusions and Future Work}
+\label{chapter:conclusion}
+
+This chapter summarises the contributions of this thesis
+(\S\ref{sec:conclusion:contributions})
+and reviews directions for future work
+(\S\ref{sec:conclusion:future-work}).
+Finally, in \S\ref{sec:conclusion:thoughts}
+I take the opportunity to reflect more broadly
+on the state of machine learning for molecule discovery
+as a whole.
+
+\section{Summary of Contributions}
+\label{sec:conclusion:contributions}
+
+Molecule discovery generally proceeds through a design-make-test-analyse (DMTA) cycle
+(introduced in \S\ref{sec:intro:contributions}).
+This thesis introduced several probabilistic machine learning algorithms
+to automate and improve different stages of this cycle.
+
+Chapter~\ref{chapter:lso} described
+\emph{latent space optimisation with weighted retraining},
+which uses a Gaussian process model trained on molecule embeddings
+from a deep generative model to select molecules with potentially desirable properties,
+and refines the embeddings over time by retraining the generative model
+on a weighted version of the dataset.
+Experimentally, this method outperformed other latent space optimisation methods
+which did not use weighted retraining.
+However, the method was limited by the fit of the Gaussian process model.
+
+Chapter~\ref{chapter:adkf} tried to compensate for this limitation
+by introducing \emph{adaptive deep kernel fitting with implicit function theorem} (ADKF-IFT):
+a novel way to fit deep kernel Gaussian process models in the meta-learning settings.
+By meta-learning some (but not all) of the model's parameters,
+ADKF-IFT was able to achieve a balance between overfitting and underfitting
+which was not possible with the established methods for fitting deep kernel GPs,
+which were either entirely based on meta-learning or not at all.
+Our experiments showed that ADKF-IFT achieved the overall best performance
+on the FS-Mol meta-learning benchmark.
+A by-product of ADKF-IFT is meta-learned molecule embeddings,
+which could be used in other out-of-distribution machine learning tasks.
+
+Chapter~\ref{chapter:trf} introduced \emph{Tanimoto random features}:
+a fast approximation for Gaussian processes with the Tanimoto kernel.
+Our experiments showed that the random features were indeed able to accurately
+approximate realistic matrices of Tanimoto coefficients between molecules.
+This method could be especially useful for problems with small \emph{training} datasets
+(too small to fit a deep kernel Gaussian process)
+but large \emph{test} datasets.
+Tanimoto random features could, for example,
+allow Bayesian optimisation with approximate Thompson sampling to be applied
+to the ultra-large ZINC database,
+which contains over $10^9$ molecules.
+
+Finally, Chapter~\ref{chapter:rfb} introduced \emph{retro-fallback}:
+an algorithm to search for synthesis plans which explicitly accounts for uncertainty.
+Noting that any individual synthesis plan may fail,
+the algorithm is explicitly designed to maximise the probability
+that at least one synthesis plan it finds will be successful
+(a metric called \emph{successful synthesis probability} or SSP).
+It operates by using dynamic programming to estimate how expanding
+individual molecules in the search graph could improve SSP,
+then takes actions greedily.
+Experimentally, we showed that retro-fallback
+maximised SSP more effectively than the established retro* and MCTS algorithms.
+However, these experiments used an unproven model to predict reaction failure,
+leaving open the question of how well retro-fallback will perform in practice.
+
+The relationship between these contributions and the DMTA cycle
+is illustrated in Figure~\ref{fig:dmta-schematic-conclusion}
+(a copy of Figure~\ref{fig:dmta-schematic} from Chapter~\ref{chapter:intro}).
+The methods from
+chapters~\ref{chapter:lso}, \ref{chapter:adkf}, and \ref{chapter:trf}
+are all models to analyse data and predict properties of molecules,
+allowing molecules with potentially desirable properties to be selected
+in the design stage.
+Retro-fallback (chapter~\ref{chapter:rfb}) can help in the design stage
+by avoiding molecules which are not easy to synthesize.
+Once a suitable molecule is designed, synthesis plans
+from retro-fallback can be used to \emph{make} the molecule.
+Together, all of these methods could be used in a \emph{Bayesian optimisation} loop
+(\S\ref{sec:background:bayesopt}).
+
+\begin{figure}[htb]
+    \input{chapter01-intro/figures/tikz-DMTA}
+    \caption[Repeated schematic of the DMTA cycle]{
+        DMTA cycle for molecule discovery
+        and how contributions from this thesis fit into it.
+        NOTE: this figure is an identical copy of Figure~\ref{fig:dmta-schematic}.
+    } 
+    \label{fig:dmta-schematic-conclusion}
+\end{figure}
+
+
+
+\section{Future Work}
+\label{sec:conclusion:future-work}
+
+\paragraph{Better evaluation}
+There are plenty of ways to modify the algorithms in this thesis
+to potentially be more useful for molecule discovery.
+However, I think the most important direction for future work is
+actually to improve the \emph{evaluation} of existing algorithms.
+Most works in this space test molecule optimisation algorithms
+using toy datasets or functions, ranging from the simple logP/QED functions
+to more complicated docking scores \citep{ortegon2021dockstring}.
+Critically, it is unclear how well these toy functions
+represent the actual molecule discovery tasks that the algorithms are supposed to solve.
+My personal opinion is that they are \emph{not} very representative,
+chiefly because toy functions can be unimodal, smooth (with respect to changes in molecular structure),
+and have simple structure-property relationships which can be exploited by algorithms.
+In order to make progress, it is important to know the shortcomings of existing algorithms
+on \emph{real} tasks, not just toy ones.
+In my opinion, most directions for future work are downstream of this one.
+
+\paragraph{Implement and test ``simple'' Bayesian optimisation baselines}
+The vast majority of Bayesian optimisation algorithms for molecule discovery
+which get published in machine learning conferences are complicated. They often use
+custom kernels and acquisition functions, and essentially describe their algorithm
+as a complete package rather than a combination of modular components which can be
+freely interchanged. This seems to give the impression that Bayesian optimisation
+algorithms must be \emph{complicated} to work well.
+I think this is not true--- I think simpler solutions have just not been tried,
+or if they have been tried then they are not published in machine learning conferences
+(probably because there would not be much technical novelty).
+I think the community would really benefit from a systematic study of existing
+simple methods (e.g.\@ Bayesian optimisation with Tanimoto kernel Gaussian processes).
+
+\paragraph{Better interface between algorithms and real world}
+The algorithms in this thesis are unified by their potential inclusion
+in Bayesian optimisation algorithms for molecule optimisation.
+In reality however, for these algorithms to be used there must be an interface
+between the algorithm and the data collection procedure.
+This could take two forms, both of which pose additional challenges:
+\begin{enumerate}
+    \item \textbf{Human-in-the-loop:}
+        a human would be doing the experiments and feeding the results back into the algorithm.
+        Few chemists are accustomed to this workflow however,
+        and if they do not \emph{trust} or \emph{understand} the algorithm
+        they will be hesitant to use it (or may not fully follow its suggestions).
+        To remedy this, a lot more thought probably needs to be put into the interface
+        between the algorithm and the human.
+        This could be in the form of interpretability or explainability (which could help build trust),
+        or by designing the algorithm to explicitly tolerate a human editing its outputs.
+    \item \textbf{Lab robots:}
+        also called ``self-driving laboratories,''
+        lab robots can potentially do experiments at large scales and
+        without human supervision
+        \citep{seifrid2022autonomous,koscher2023autonomous,tom2024sdl}.
+        This is a more natural fit for the algorithms in this thesis,
+        but also has its own challenges.
+        For example, lab robots may not be able to correctly intervene if something goes wrong,
+        such as stopping a chemical reaction which is getting too hot or noticing contamination
+        of a sample.
+        To deploy the algorithms in this thesis in a lab robot setting,
+        more work studying the robustness of these algorithms is probably necessary.
+\end{enumerate}
+
+\paragraph{Applications to proteins and materials design}
+Designing proteins and materials is in many ways similar to designing molecules.
+These problems all have an enormous (and partially discrete) search space,
+expensive evaluations, and domain knowledge.
+This makes Bayesian optimisation a natural fit for these problems.
+Despite this, I think these subfields do not have as much interaction
+or knowledge exchange as they should.
+I hope this can change in the near future.
+
+\paragraph{Future of Gaussian processes in molecule discovery}
+The preceding chapters all utilized GPs in one way or another.
+In the age of neural networks and foundation models, it is fair to ask
+whether GPs will still be important for molecule discovery in the future.
+My answer is \emph{yes}, for the following reasons:
+\begin{enumerate}
+    \item GPs naturally provide uncertainty estimates at roughly the same cost as the posterior mean
+        (in fact the kernel matrix inverse can be reused).
+        This is useful for decision-making, and natural scientists highly appreciate uncertainty estimates.
+        In contrast, neural networks are known to easily overfit (especially to small datasets).
+    \item The inductive bias of GPs can be controlled and interpreted via its kernel function.
+        This is also appreciated by natural scientists, who value interpretability and predicable behaviour from models.
+        In contrast, neural networks are notoriously inscrutable.
+    \item A GP posterior conditioned on $N$ data points can be efficiently updated to incorporate an additional data point
+        with only $\mathcal O(N^2)$ cost (compared to $\mathcal O(N^3)$ cost for complete re-fitting).
+        This is useful when data is gathered in small batches (e.g.\@ when performing molecule optimisation).
+        In contrast, there is no easy way to update a neural network to incorporate an extra data point;
+        except in special cases re-fitting is required.
+\end{enumerate}
+Of course, GPs have disadvantages, chiefly their scaling with dataset size.
+However, since many molecule discovery tasks use small datasets,
+this disadvantage will not be as pronounced as in other domains.
+Therefore, GPs as a whole stand out as a useful tool for molecular discovery,
+and deserve future research attention.
+
+One topic worth highlighting for future research is the use of GPs
+with non-Gaussian measurement noise.
+In this case, the GP posterior can no longer be computed analytically,
+requiring approximate inference methods.
+Although many such approximations have been proposed in the literature \citep{hensman2013gaussian},
+they do not appear to be widely used in practice,
+meaning it is unclear how well they would perform on real molecule discovery tasks (which often feature heavy-tailed noise).
+Evaluating and improving such approximation methods in the context of molecules
+could be a fruitful direction for future research.
+
+\section{Closing thoughts}
+\label{sec:conclusion:thoughts}
+
+In fields like computer vision and natural language processing,
+deep learning has unquestionably \emph{revolutionized} the field---
+so much so that algorithms from the pre-deep learning era are now considered obsolete.
+In my opinion, the same cannot be said for molecule discovery.
+There are several reasons for this.
+
+First, molecule discovery is a diverse collection of problems
+with small, fragmented, and noisy datasets.
+This makes classical machine learning methods more competitive.
+In fact, much of my PhD has been a humbling experience of how difficult it can be to improve upon very
+basic but well-established methods such as random forests or genetic algorithms.
+I think many people in machine learning for molecule discovery are not aware of this,
+mainly because they do not put much effort into tuning and debugging these basic methods.
+
+Second, algorithms for molecule discovery must be deployed in a more complex setting
+compared to most algorithms in computer vision and natural language processing.
+In those fields, algorithms are typically deployed
+to do tasks which a single human could do: for example,
+suggesting the next word in a sentence or identifying objects in an image.
+Molecule discovery is different:
+it is done by \emph{teams} of humans who interact with each other
+and use a wide range of lab equipment.
+The usefulness of an algorithm is therefore not simply its prediction accuracy,
+but the overall efficacy of the end-to-end system which includes the algorithm.
+This is difficult to define and measure.
+
+Therefore, as much as I would like to say that the algorithms in this thesis are the new
+``state-of-the-art'' methods for molecule discovery,
+the experiments in this thesis are not sufficient to make that claim
+(and I suspect that no single thesis could be).
+Instead, I hope that the algorithms in this thesis can be used
+alongside existing algorithms as \emph{components} for future molecule discovery pipelines.
+Because of this, one could fairly argue that title of this thesis,
+``Probabilistic machine learning algorithms for molecule discovery,''
+is too grandiose.
+Nonetheless, I am proud of the work I have done,
+and am confident that I have pushed the frontiers of what is possible,
+even if only by a small amount.

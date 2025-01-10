@@ -1,0 +1,74 @@
+\section{Low-variance random features for Tanimoto and MinMax kernels}\label{sec:minmax-rf}
+
+Outside of chemistry, the Tanimoto coefficient has been widely used to measure the similarity
+between text documents
+and rank results in search engines.
+To quickly find documents with high similarity to a user's query,
+many prior works have studied random
+\emph{hashes} for the Tanimoto coefficient,
+i.e.\@ a family of random functions $h:\mathcal{X}\mapsto\{1,\ldots,K\}$ such that
+\begin{equation}\label{eqn:random-hash-defn}
+    \probability_h \left( h(x) = h(x') \right) = T_{MM}(x,x').
+\end{equation}
+Although initially these hashes were only applicable to binary inputs
+\citep{broder1997resemblance,broder1998min,charikar2002similarity},
+more recent work has produced efficient random hashes for arbitrary non-negative vectors
+\citep{manasse2010consistent,ioffe2010improved,shrivastava2016simple}.
+In this section we propose a novel family of low-variance random features for $T_{MM}$
+(and by extension $T_{S}$) which is based on random hashes.
+
+It is important to clarify that although the definition of random hashes in equation~\ref{eqn:random-hash-defn}
+resembles the definition of random features in equation~\ref{eqn:random-feature-definition},
+they are actually distinct.
+Random hash functions output \emph{discrete} objects (typically an integer or tuple of integers)
+whose probability of \emph{equality} is $T_{MM}$,
+while random features must output \emph{vectors} in $\mathbb{R}^M$ whose expected \emph{inner product}
+is $T_{MM}$.
+If a random hash maps to $\{1,\ldots,K\}$,
+a naive approach may be to use a $K$-dimensional indicator vector as a random feature.
+Because hash equality is a binary outcome,
+the variance of such random features would be $T_{MM}\left(1-T_{MM}\right)$.
+Realistic hash functions like that of \citet{ioffe2010improved}
+use $K\ge 10^3$,
+implying a ``variance per feature'' of $\approx 10^2$,
+which is undesirably high.
+
+Our main insight is that low-variance scalar random features can be created
+by using a random hash to \emph{index} a suitably distributed random vector.
+In the following theorem, we show that a vector of i.i.d.\@ samples
+from any distribution with the correct first and second moments
+can be combined with random hashes to produce random features for $T_{MM}$.
+\begin{theorem}\label{thm:general-minmax-rf}
+    Let $h:\mathcal X \to \mathcal Y$ be a random hash for $T_{MM}$ satisfying equation~\ref{eqn:random-hash-defn}, with $|\mathcal Y|=K$. Furthermore, let $\xi$ be a random variable such that $\mathbb{E}[\xi]=0$ and $\mathbb{E}[\xi^2]=1$,
+    and let $\Xi=[\xi_1,\ldots,\xi_K]$ be a vector of independent copies of $\xi$.
+    Then the 1D random features 
+    \begin{equation}\label{eqn:minmax-rf}
+        \phi_{\Xi,h}(x)=\Xi_{h(x)}  
+    \end{equation}
+    estimate $T_{MM}$ without bias: 
+    $\E_{\Xi,h}(\phi_{\Xi,h}(x)\cdot\phi_{\Xi,h}(x')) = T_{MM}(x,x')$,
+    and with variance
+    \begin{equation}\label{eqn:general-minmax-rf-variance}
+    \mathbb{V}_{\Xi,h}\left[\phi_{\Xi,h}(x)\cdot \phi_{\Xi,h}(x')\right] = 1+T_{MM}(x,x')\left(E[\xi^4]-1-T_{MM}(x,x')\right) \ge 1-T_{MM}(x,x')^2.
+    \end{equation}
+    Furthermore, the lower bound is tight and achieved when $\xi$ is Rademacher distributed (i.e.\@ uniform in $\{-1,1\}$).
+\end{theorem}
+
+The proof is given in Appendix~\ref{apdx:minmax-rf-proof}. This theorem shows that Rademacher $\xi$ yields the smallest possible variance in the class of random features defined in \cref{eqn:minmax-rf}.
+
+These random features have many desirable properties. First, unlike random features for many other kernels such as the Gaussian kernel \citep{liu2021random},
+the variance does not depend on the dimension of the input data or norms of the input vectors.
+Second, because these random features are 1-dimensional scalars,
+$M$ independent random feature functions can be concatenated to produce $M$-dimensional random feature
+vectors with variance at most $1/M$.
+This suggests that as few as $\approx10^3$ random features could be used in practical problems.
+Third, although each instance of $\Xi$ requires storing a $K$ dimensional random vector,
+if $\xi$ is chosen to be Rademacher distributed, then each entry can be stored with a single bit,
+requiring just $\approx 100$ kB of memory when $K=10^6$.
+
+One disadvantage of these random features
+is that they are not continuous or differentiable with respect to their inputs.
+For applications such as Bayesian optimisation which require optimising over model inputs
+this would create difficulties as gradient-based optimisation could no longer be done.
+It was this disadvantage which motivated us to search for other random features,
+leading to the discoveries in the following section.

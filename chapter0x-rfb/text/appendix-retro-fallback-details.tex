@@ -1,0 +1,132 @@
+\section{Details of \texorpdfstring{$\rs(\cdot)$, $\psi(\cdot)$ and $\rho(\cdot)$}{s, ψ and ρ}}
+\label{appendix:rfbd:s,psi,rho}
+
+\subsection{
+    Cost-minimisation interpretation
+}
+\label{appendix:s,psi,rho min cost}
+
+The functions $\rs(\cdot)$, $\psi(\cdot)$, and $\rho(\cdot)$
+have a cost minimisation interpretation
+when transformed by
+mapping $f(\cdot)\mapsto-\log{f(\cdot)}$
+(using the convention that $\log{0}=-\infty$).
+To see, this, we write the transformed equations explicitly.
+To simplify notation, we write:
+\begin{align}
+    \dot b (m) &= -\log{b(m)} \\
+    \dot f (r) &= -\log{f(r)} \\
+    \dot h (m) &= -\log{h(m)}  \\
+    \dot \rs (\cdot) &= -\log{\rs(\cdot)}  \\
+    \dot \psi (\cdot) &= -\log{\psi(\cdot)}  \\
+    \dot \rho (\cdot) &= -\log{\rho(\cdot)} \ . 
+\end{align}
+
+For $\rs(\cdot)$ (equations~\ref{eqn:molecule success}--\ref{eqn:reaction success}),
+we have
+\begin{align}
+    \dot\rs(m;\gG',f,b) &= 
+        \min\left[
+            \dot b(m),
+            \min_{r\in\children_{\gG'}(m)}\dot\rs(r;\gG',f,b)
+        \right]\ , \\
+    \dot\rs(r;\gG',f,b) &=
+        \dot f(r)
+        + \sum_{m\in\children_{\gG'}(r)}
+            \dot\rs(m;\gG',f,b)
+    \ . 
+\end{align}
+Since $\rs(\cdot)\in\{0, 1\}$,
+this corresponds to a pseudo-cost of $0$ if a molecule is synthesizable
+and a cost of $+\infty$ otherwise.
+
+For $\psi(\cdot)$ (equations~\ref{eqn:psi molecule}--\ref{eqn:psi reaction})
+and $\rho(\cdot)$ (equations~\ref{eqn:rho molecule}--\ref{eqn:rho reaction})
+we have:
+\begin{align}
+    \dot\psi(m;\gG',f,b,h) &= \begin{cases}
+        \min\left[
+            \dot b(m),
+            \dot h(m)
+        \right] & m\in\frontier(\gG') \\
+        \min\left[
+            \dot b(m),
+            \min_{r\in\children_{\gG'}(m)}
+                \dot\psi(r;\gG',f,b,h)
+        \right] & m\notin\frontier(\gG') \\
+    \end{cases} \ , \\
+    \dot\psi(r;\gG',f,b,h) &= \dot f(r) + \sum_{m\in\children_{\gG'}(r)} \dot\psi(m;\gG',f,b,h)\ . 
+\end{align}
+\begin{align}
+    \dot\rho(m;\gG',f,b,h) &= \begin{cases}
+        \dot\psi(m;\gG',f,b,h) & m\text{ is target molecule }\targetmol \\
+        \min_{r\in\parents_{\gG'}(m)}\dot\rho(r;\gG',f,b,h) & \text{all other }m \\
+    \end{cases}\ , \\
+    \dot\rho(r;\gG',f,b,h) &= \begin{cases}
+        +\infty & \dot\psi(r;\gG',f,b,h) = +\infty \\
+        \dot\rho(m';\gG',f,b,h) \\ \qquad- \dot\psi(m';\gG',f,b,h) \\ \qquad + \dot\psi(r;\gG',f,b,h) & \dot\psi(r;\gG',f,b,h) < \infty, m'\in\parents_{\gG'}(r)
+    \end{cases}\ .
+\end{align}
+Since $\psi(\cdot)$ and $\rho(\cdot)$ have ranges $[0,1]$,
+$\dot\psi(\cdot)$ and $\dot\rho(\cdot)$ have ranges $[0,+\infty]$
+(i.e.\@ explicitly including infinity).
+
+
+\subsection{
+    Clarification of
+    \texorpdfstring{$rs$, $\psi$, and $\rho$}{s, ψ and ρ}
+    for cyclic graphs
+}
+
+If $\gG'$ is an acyclic graph,
+the recursive definitions
+of $\rs(\cdot)$, $\psi(\cdot)$, and $\rho(\cdot)$
+will always have a unique solution obtained by direct recursion
+(from children to parents for $\rs(\cdot)$ and $\psi(\cdot)$,
+and from parents to children for $\rho(\cdot)$).
+However, for cyclic graphs, such recursion is not possible
+and therefore these equations do not (necessarily) uniquely define
+the functions  $\rs(\cdot)$, $\psi(\cdot)$, and $\rho(\cdot)$.
+
+The minimum cost interpretation from section~\ref{appendix:s,psi,rho min cost}
+provides a resolution.
+Minimum cost solutions in AND/OR graphs
+with cycles have been extensively
+studied
+\citep{hvalica1996andorsearch,jimenez2000efficient}
+and do indeed exist.
+\citet[Lemma 1]{hvalica1996andorsearch} in particular suggests
+that the presence of multiple solutions will happen only
+because of the presence of zero-cost cycles
+(which could be caused by a cycle of feasible reactions).
+To produce a unique solution,
+we re-define all costs to 0 to be a constant $\epsilon>0$
+(for which there will be a unique solution for $\dot\rs$, $\dot\psi$, and $\dot\rho$),
+and take the limit as $\epsilon\to0$ to produce a unique solution which includes 0 costs.
+
+\subsection{
+    Computing
+    \texorpdfstring{$\rs$, $\psi$, and $\rho$}{s, ψ and ρ}
+}
+
+The best method of computation will depend on $\gG'$.
+If $\gG'$ is acyclic (for example, as will always be the case for tree-structured search graphs)
+then direct recursion is clearly the best option.
+This approach also has the advantage that the computation can stop early if
+the value of a node does not change.
+
+In graphs with cycles, any number of algorithms to find minimum
+\emph{costs} in AND/OR graphs
+can be applied to the minimum-cost formulations
+of $\rs(\cdot)$, $\psi(\cdot)$, and $\rho(\cdot)$
+from section~\ref{appendix:s,psi,rho min cost}
+\citep{chakrabarti1994algorithms,hvalica1996andorsearch,jimenez2000efficient}.
+
+\subsection{Analytic solutions for \texorpdfstring{$\psi(\cdot)$ and $\rho(\cdot)$}{ψ and ρ}}
+
+The analytic solutions for $\psi(\cdot)$ and $\rho(\cdot)$
+follow straightforwardly from their cost-minimisation interpretation (\ref{appendix:s,psi,rho min cost}).
+$\rs$ and $\rho$ are equivalent to $c^*$ with a modified definition of cost,
+(equations~\ref{eqn:retro* min cost mol}--\ref{eqn:retro* min cost rxn}),
+while $\psi$ is equivalent to $\hat c^*$
+(equations~\ref{eqn:retro* min cost mol with heuristic}--\ref{eqn:retro* min cost rxn with heuristic}).

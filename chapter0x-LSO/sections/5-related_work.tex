@@ -1,0 +1,49 @@
+\section{Related Work}
+\label{sec:lso:related-work}
+In this section we compare and contrast 
+our proposed latent space optimisation with weighed retraining
+with other methods in the literature.
+
+\subsection{Procedures analogous to weighted retraining}
+A few previous machine learning methods can be viewed as implementing a version of weighted retraining.
+The cross-entropy (CE) method iteratively retrains a generative model using a weighted training set,
+such that high-scoring points receive higher weights \citep{rubinstein_optimization_1997,rubinstein_cross-entropy_1999,de2005tutorial}.
+Indeed, particular instantiations of the CE method such as reward-weighted regression \citep{peters2007reinforcement},
+feedback GAN \citep{gupta_feedback_2019},
+and design/conditioning by adaptive sampling (DbAS/CbAS) \citep{Brookes_Listgarten_2020,brookes2019conditioning}
+have been applied to similar problem settings as our work.
+However, our proposed method of weighted retraining has two main differences from CE.
+Firstly, \emph{standard CE produces only binary weights} \citep{de2005tutorial}, which amounts to simply adding or removing points from the training set.%
+\footnote{Although methods such as DbAS \citep{Brookes_Listgarten_2020} generalize these weights to lie in $[0,1]$, this is determined by the noise of the oracle and therefore will still produce binary weights when $f$ is deterministic, as considered in this chapter.}
+This is suboptimal for reasons discussed in \cref{subsec:weighting,subsec:retraining}, and consequently, \emph{we consider a strictly more general form of weighting}.
+Secondly, \emph{CE has no intrinsic optimisation component.}
+High-performing points are found only by repeatedly sampling from the generative model and evaluating $f$.
+By contrast, our method \emph{explicitly selects high-performing points} using Bayesian optimisation.
+The necessity of repeated sampling in CE makes it only suitable in cases where evaluating $f$ is cheap, which is \emph{not} what we are considering.
+Moreover, works such as \citep{segler_generating_2018} perform optimisation by fine-tuning a generative model on a smaller dataset of high-scoring samples.
+This can also be viewed as a special case of weighted retraining with binary weights,
+where the weights are implicitly defined by the number of fine-tuning epochs.
+
+\subsection{Bayesian optimisation}
+
+Our method fits comfortably within the Bayesian optimisation framework (\S\ref{sec:background:bayesopt}).
+It is effectively an input-agnostic procedure to create probabilistic models
+and update them throughout the optimisation procedure.
+Perhaps the most similar work to ours is \citet{blanchard_output_weighted_2020},
+use a weighted \emph{acquisition function} to increase the sample efficiency of \gls{bo}
+(although they do not use these weights to create the model itself).
+
+\subsection{Reinforcement Learning}
+\Gls{rl} frames optimisation problems as Markov decision processes for which an agent learns an optimal policy \citep{sutton1998introduction}.
+It has recently been applied to various optimisation problems in structured input spaces \citep{li_deep_2018}
+where we believe latent space optimisation with weighted retraining may be effective,
+notably in chemical design \citep{you_graph_2018,zhou_optimization_2019,guimaraes_objective-reinforced_2018,olivecrona_molecular_2017,popova_deep_2018,simm_reinforcement_2020}.
+While \gls{rl} is undoubtedly effective at optimisation, it is generally extremely sample inefficient,
+and consequently its biggest successes are in virtual environments where function evaluations are inexpensive \citep{li_deep_2018}.
+
+\subsection{Conditional Generative Models}
+One interesting direction is the development of \emph{conditional generative models},
+which directly produce novel points conditioned on a specific property value \citep{sohn_learning_2015,mirza_conditional_2014}.
+Although many variants of these algorithms have been applied to real-world problems such as chemical design 
+\citep{jin_learning_2019,kang_conditional_2019,li_multi-objective_2018,lim_molecular_2018,Brookes_Listgarten_2020},
+the sample efficiency of this paradigm is currently unclear.

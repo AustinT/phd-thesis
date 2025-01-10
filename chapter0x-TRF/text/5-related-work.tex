@@ -1,0 +1,30 @@
+\section{Related work}\label{sec:trf:related-work}
+
+
+Our work on random features fits into a large body
+of literature random features
+for kernels \citep{liu2021random}.
+The majority of work in this area
+focuses on stationary kernels (i.e.\@ $k(x,x')=f(x-x')$),
+because the Fourier transform can be applied
+to any stationary kernel to produce random features
+in a systematic way \citep{rahimi2007random}.
+There is however no analogous universal formula to produce
+random features for non-stationary kernels like $T_{MM}$ and $T_{DP}$;
+therefore each kernel requires a bespoke approach.
+Although our random features are novel, they build upon ideas present in prior works.
+Our random features for $T_{MM}$ critically rely on previously-proposed random hashes for $T_{MM}$.
+Our approach to create random features for $T_{DP}$ via approximating its power series was inspired
+by the random features for the Gaussian kernel from \citet{cotter2011explicit},
+which were subsequently improved upon by \citet{ahle2020oblivious}.
+Similar techniques have also been used to create random features for the neural tangent kernel \citep{zandieh2021scaling}.
+However, to the best of our knowledge no prior
+works have proposed random features specifically for the Tanimoto
+kernel or its variants.
+
+Other works have proposed other types of scalable approximations for Tanimoto coefficients which are not based on random features.
+\citet{haque2010scissors} propose SCISSORS, an optimisation-based approach to estimate Tanimoto coefficients which is akin to a data-dependent sketch.
+A large number of works use hash-based techniques to find approximate nearest neighbours with the Tanimoto distance metric
+\citep{nasr2010hashing,kristensen2011using,tabei2011sketchsort,anastasiu2017efficient}.
+Although these techniques are useful for information retrieval,
+unlike random features they cannot be used to directly scale kernel methods to larger datasets.

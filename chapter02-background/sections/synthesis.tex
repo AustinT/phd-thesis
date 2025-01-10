@@ -1,0 +1,329 @@
+\section{Retrosynthetic planning (retrosynthesis)}
+\label{sec:background:synthesis}
+
+Performing a physical measurement on a molecule requires either purchasing it or producing it.
+Given that even the largest databases of immediately purchasable molecules (such as Enamine) contain only $10^9$ compounds,
+accessing most of chemical space requires producing molecules oneself.
+This can be achieved by purchasing precursor molecules and performing one or more chemical reactions,
+a process called \emph{synthesis}.
+
+Not all molecules are easy to synthesize however, and previous work has shown that many molecules generated
+by machine learning models are difficult to synthesize
+\citep{gao2020synthesizability}.
+If the space of synthesizable molecules is unknown,
+this is equivalent to having an incomplete knowledge of
+the space of accessible molecules $\amolspace$,
+causing issues for molecular optimisation (\S\ref{sec:background:molopt}).
+This motivates the importance of explicitly considering synthesis.
+
+There are a few techniques to do this.
+One is to produce some kind of ``synthesizability''
+score for a molecule, which estimates how easy it is to synthesize.
+Some models of this type include synthetic accessibility (SA) scores
+\citep{ertl2009estimation},
+SC score \citep{coley2018scscore},
+and RA score \citep{thakkar2021retrosynthetic}.
+Such scores are typically quick to compute,
+but are not always accurate.\footnote{
+    A fundamental problem with synthesizability scores
+    is that ``synthesizability'' is not well-defined.
+    Whether a molecule is ``synthesizable'' or not depends on
+    ones resources, expertise, and time.
+    A large pharmaceutical company will likely be able to synthesize
+    more molecules than a lone graduate student.
+}
+Another technique is to generate synthesis plans directly,
+for example using generative models
+\citep{bradshaw2019model,bradshaw2020barking,gottipati2020learning,gao2021amortized}.
+These models have the advantage of producing an explicit synthesis plan,
+but the disadvantage of not having direct control over what molecule the synthesis plan produces!
+
+Because of this, there is arguably no perfect substitute for explicit retrosynthetic planning:
+creating a synthesis plan for a pre-specified target molecule by working backwards.
+Retrosynthesis has a long history of automation in chemistry
+\citep{vleduts1963concerning,corey1969computer}.
+The rest of this section will discuss retrosynthetic planning.
+
+\subsection{Problem definition}
+
+Let $\rxnspace$ denote the space of single-product chemical reactions
+which transform a set of \emph{reactant} molecules $R\subseteq\molspace$
+into a
+\emph{product} molecule in $\molspace$.
+A large amount of work has been on training machine learning models
+to predict reactant sets
+which will produce a given product molecule
+\citep{segler2017neural,dai2019retrosynthesis,%
+seidl2021modern,chen2021deep,sacha2021molecule,irwin2022chemformer,%
+zhong2022root,liu2023fusionretro}.
+These models are trained on large datasets of known reactions.
+The exact nature of these models is not important for the work presented in this thesis,
+and therefore we will represent these models abstractly as
+a \emph{backward reaction model} function $B:\gM\mapsto 2^\gR$.
+
+The reactions predicted by a backward reaction model can be used to define
+a \emph{reaction graph} $\gG$.
+There are generally two kinds of reaction graphs.
+The first type is called and AND/OR graph.
+It is a directed graph which contains two types of nodes:
+molecule nodes (also called OR nodes)
+and reaction nodes (also called AND nodes).
+Molecule nodes contain outgoing edges towards reactions which produce them,
+and reaction nodes contain outgoing edges towards their reactant molecules.
+Note that direction of the edges (from products towards reactants)
+is the \emph{opposite} of how the reaction would actually be performed
+(from reactants to products).
+There are two subtypes of AND/OR graphs:
+graphs which contain only one node for each molecule and each reaction
+(and therefore may contain cycles if reversible reactions are present)
+and graphs wherein these cycles are ``unrolled''.
+We refer to the former type of search graph as simply a ``graph,''
+while the latter type is called a ``tree.''
+Examples of an AND/OR graph
+and its corresponding
+AND/OR tree are shown in Figure~\ref{fig:graphs-vs-trees-schematic}.
+
+\begin{figure}[ht]
+    \centering
+    \input{chapter0x-rfb/figures/schematics/graphs-vs-trees}
+    \caption[Example of an AND/OR graph and tree.]{
+        AND/OR graph and tree representation of the reaction set
+        $\targetmol\Rightarrow m_a$ ($r_1$),
+        $m_a\Rightarrow m_b$ ($r_2$),
+        $\targetmol\Rightarrow m_c$ ($r_3$),
+        and
+        $m_c\Rightarrow \targetmol$ ($r_4$).
+    }
+    \label{fig:graphs-vs-trees-schematic}
+\end{figure}
+
+A second kind of reaction graph is an OR tree.
+This is a directed graph where each node corresponds to a \emph{set}
+of molecules,
+and outgoing edges correspond to reactions which produce the set of molecules
+from another set of molecules (not necessarily using all of the molecules as reactants though).
+In this type of graph, cycles are always unrolled so that the graph is always a tree.
+An example of an OR tree is shown in Figure~\ref{fig:or-graph-schematic}.
+
+\begin{figure}[ht]
+    \centering
+    \input{chapter0x-rfb/figures/schematics/or-graph}
+    \caption{OR tree for same set of reactions as Figure~\ref{fig:graphs-vs-trees-schematic}.}
+    \label{fig:or-graph-schematic}
+\end{figure}
+
+One could imagine forming a ``complete'' reaction graph $\gG$ by starting with a
+\emph{target molecule} $\targetmol$ and iteratively ``growing''
+a graph by using a backward reaction model $B$ to add reactions
+to all leaf molecules until no molecules remain.
+This ``complete'' graph $\gG$ would contain all possible synthesis plans,
+and therefore be a natural object for retrosynthetic planning.
+Unfortunately, the size of this graph will typically grow exponentially
+with the depth, and therefore be too large to compute in practice
+(analogous to the game trees of chess and Go).
+Instead, retrosynthetic planning will be performed
+on an \emph{explicit search} $\gG'\subseteq\gG$.
+In contrast, the ``complete'' graph $\gG$ will be called the \emph{implicit search graph}.
+
+A \emph{synthesis plan} for a molecule $m$ is a sequence of chemical reactions
+which produces $m$ as the final product.
+Synthesis plans usually form trees $T\subseteq\gG$
+(more generally directed acyclic subgraphs),
+wherein each molecule is produced by at most one reaction.
+The set of all synthesis plans in $\gG$ which produce a molecule $m$
+is denoted $\enumplans_m(\gG)$.
+Figure~\ref{fig:retrosynthesis-background-schematic} provides an example
+of an explicit search graph (a) and all synthesis plans for $\targetmol$
+which are contained within it (b).
+Not all synthesis plans are equally useful however.
+Most importantly,
+for a synthesis plan to actually be executed by a chemist
+the starting molecules must all be bought.
+Typically this is formalized as requiring all starting molecules
+to be contained in an \emph{inventory} $\gI\subseteq\molspace$.
+It is also desirable for synthesis plans to have low cost,
+fewer steps, and reactions which are easier to perform.
+
+\begin{figure}[ht]
+    \centering
+    \input{chapter0x-rfb/figures/schematics/retrosynthesis-intro}
+    \caption[AND/OR graph and its synthesis plans.]{
+       \textbf{a)} graph $\gG'$ with (backward) reactions
+            $\targetmol\Rightarrow m_a+m_b\,(r_1)$,
+            $\targetmol\Rightarrow m_b+m_c+m_d\,(r_2)$,
+            and $m_a\Rightarrow m_e\,(r_3)$.
+            Dashed box illustrates expansion of $m_c$. %
+        \textbf{b)} All synthesis plans in $\enumplans_{\targetmol}(\gG')$.
+    }
+    \label{fig:retrosynthesis-background-schematic}
+\end{figure}
+
+Various search algorithms have been proposed to find synthesis plans in $\gG$.
+Although they use different mechanisms,
+at a high level they all work similarly.
+First, they initialize the explicit search graph $\gG'\subseteq\gG$
+by $\gG'\gets\{\targetmol\}$ (i.e.\@ just the target molecule).
+Nodes whose children have not been added to $\gG'$
+form the \emph{frontier} $\frontier(\gG')$.
+Then, at each iteration $i$ they select a frontier molecule $m_{(i)}\in\frontier(\gG')$
+(necessarily $\targetmol$ on the first iteration),
+query $B$ to find reactions which produce $m_{(i)}$,
+then add these reactions and their corresponding reactant molecules to the explicit graph $\gG'$.
+This process is called \emph{expansion},
+and is illustrated for $m_c$ in Figure~\ref{fig:retrosynthesis-background-schematic}a.
+Search continues until a suitable synthesis plan is found or until the computational budget is exhausted.
+Afterwards,
+synthesis plans can be enumerated from $\gG'$.
+This general procedure is described in Algorithm~\ref{alg:general-retrosynthesis-search}.
+
+\begin{algorithm}[th]
+\caption{General retrosynthesis search algorithm.}\label{alg:general-retrosynthesis-search}
+\begin{algorithmic}[1]
+\REQUIRE target molecule $\targetmol$, backward reaction model $B$
+\STATE $\gG'\gets \{\targetmol\}$
+\FOR{$i$ in $1,2,\ldots$}
+    \STATE Compute $\frontier(\gG')$\hfill\COMMENT{Set of frontier nodes}
+    \STATE\label{general retrosynthesis alg: node selection}
+        Select $m_{(i)}\in\frontier(\gG')$ to expand\hfill\COMMENT{This is the core part of the search algorithm}
+    \STATE $R\gets B(m_{(i)})$\hfill\COMMENT{Use backwards reaction model to find reactions with product $m_{(i)}$}
+    \FOR{$r\in R$}
+        \STATE Add $r$ and its reactant molecules to $\gG'$
+    \ENDFOR
+    \IF{computational budget is exhausted}
+        \RETURN $\gG'$\hfill\COMMENT{Terminate search}
+    \ENDIF
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+The key difference between algorithms is in line~\ref{general retrosynthesis alg: node selection}:
+which frontier node to select for expansion.
+The most popular retrosynthesis search algorithms compute some sort of metric
+of synthesis plan quality, and use a 
+\emph{search heuristic} to guide the search towards high-quality synthesis plans.
+The remainder of this section will introduce these algorithms in more detail.
+
+
+\subsection{Retro* search algorithm}
+\label{sec:background:retro*}
+
+Retro* is a greedy best-first search algorithm to find minimum-cost synthesis plans
+on AND/OR \emph{tree}-structured search graphs
+\citep{chen2020retro}.
+It is functionally identical to the previously proposed AO* search algorithm
+\citep{chang1971admissible,martelli1978optimizing,nilsson1982principles,mahanti1985andor},
+although \citet{chen2020retro} do not mention this connection (most likely because they were not aware of it).
+In retro*, the cost of a synthesis plan is defined as:
+\begin{equation}
+    c_{\text{plan}}(T) = \sum_{
+        \underbrace{r\in T\cap \rxnspace}_{\text{reactions in }T}
+        } c_{\text{rxn}}(r) 
+    + \sum_{
+        \underbrace{m\in \frontier(T)}_{\text{starting molecules in }T}
+        } c_{\text{mol}}(m)
+    \ ,
+\end{equation}
+namely the sum of execution costs
+for each reaction
+(given by $c_{\text{rxn}}:\rxnspace\mapsto[0, \infty]$)
+and purchase costs for each starting molecule
+(given by $c_{\text{mol}}:\molspace\mapsto[0,\infty]$).\footnote{
+    Note that this formalism explicitly allows for infinite costs.
+}
+This essentially assumes that a high-quality synthesis plan will be composed
+of individually low-cost reactions
+and low-cost molecules (where ``cost'' does not necessarily mean monetary cost).
+
+Let $c^*:\molspace\cup\rxnspace\mapsto[0,\infty]$ be a function which yields
+the minimum cost synthesis plan\footnote{For any molecule, not just the target molecule $\targetmol$}
+which contains the input molecule or reaction.
+By virtue of using an AND/OR \emph{tree} with separate costs for each reaction and molecule,
+such a minimum cost synthesis plan will contain sub-plans (i.e.\@ sub-trees)
+which also have minimum costs.
+This means $c^*$ will satisfy the recursive equations:
+\begin{align}
+    c^*(m) &= \min\left[
+        c_{\text{mol}}(m),
+        \min_{r\in \children_{\gG'}(m)} c^*(r)
+    \right] \label{eqn:retro* min cost mol} \\
+    c^*(r) &= c_{\text{rxn}}(r) + \sum_{m\in\children_{\gG'}(r)} c^*(m) \label{eqn:retro* min cost rxn} \ ,
+\end{align}
+where $\children_{\gG'}(n)$ denotes the set of children of node $n$ in the search graph $\gG'$.
+Furthermore, as trees are acyclic, these recursive equations completely define $c^*$
+(using the convention that the minimum of an empty set is $+\infty$).
+
+As a greedy algorithm,
+retro* selects frontier nodes for expansion if their expansion is
+predicted to lead to a low-cost synthesis plan
+for the target molecule $\targetmol$.
+A search heuristic $h:\molspace\mapsto[0,\infty]$
+is used to predict the future $c^*$ value of frontier molecules should they be expanded.
+This leads to an estimated minimum cost function 
+$\hat c^*:\molspace\cup\rxnspace\mapsto[0,\infty]$ defined recursively as:
+\begin{align}
+    \hat c^*(m) &= \begin{cases}
+        \min\left[ c_{\text{mol}}(m), h(m)\right] & \text{if } m\in\frontier(\gG') \\
+        \min\left[
+            c_{\text{mol}}(m), 
+            \min_{r\in \children_{\gG'}(m)} \hat c^*(r)
+        \right] & \text{if } m\notin\frontier(\gG')
+    \end{cases} \label{eqn:retro* min cost mol with heuristic}\\
+    \hat c^*(r) &= c_{\text{rxn}}(r) + \sum_{m\in\children_{\gG'}(r)} \hat c^*(m) \ .%
+    \label{eqn:retro* min cost rxn with heuristic}
+\end{align}
+The key difference between these equations and
+equations~\ref{eqn:retro* min cost mol}--\ref{eqn:retro* min cost rxn} for $c^*$
+is that frontier molecules (and only frontier molecules) can use
+the heuristic $h$ as their cost instead of $c_{\text{mol}}$.
+
+Once the estimated minimum cost function $\hat c^*$ is computed for all nodes in the search graph $\gG'$,
+$\hat c^*(\targetmol)$ gives the cost of the best (predicted) synthesis plan for the target molecule $\targetmol$.
+Frontier nodes on this synthesis plan can be found by descending the tree from $\targetmol$
+and selecting the child with the lowest $\hat c^*$ value at each step.
+This whole procedure is used to implement step~\ref{general retrosynthesis alg: node selection}
+of algorithm~\ref{alg:general-retrosynthesis-search}.
+
+\subsection{Monte Carlo Tree Search}
+
+Monte Carlo Tree Search (MCTS) is a family of algorithms from reinforcement learning,
+typically used to estimate the maximum reward action in a game tree
+\citep{browne2012survey}.
+It was first applied to retrosynthesis by \citet{segler2018planning},
+who used an OR tree search graph (illustrated in Figure~\ref{fig:or-graph-schematic})
+to allow retrosynthesis to be formulated as a Markov decision process (MDP).
+In this kind of search tree, synthesis plans correspond to paths in the tree.
+
+First, MCTS initializes a ``visit count'' for each node in the search graph $\gG'$.
+At each step of MCTS, starting at the root node of the search graph
+(with molecule set $\{\targetmol\}$),
+it descends the tree choosing nodes which maximise
+\begin{equation}
+    \frac{W(s_t,a)}{N(s_t,a)} + cP(s_t,a)\frac{\sqrt{N(s_{t-1},a_{t-1})}}{1+N(s_t,a)}\ ,
+\end{equation}
+where $W(s_t,a)$ is the total reward accumulated while taking action $a$ to reach state
+$s_t$, $N(s_t,a)$ is the number of times when the algorithm has performed action $a$
+to reach state $s_t$ and $P(s_t,a)$ is some sort of prior probability
+of performing action $a$ to reach $s_t$,
+and $c$ is a constant.
+At the end of this descent, a frontier node will always be reach reached
+(because an OR tree is acyclic by construction).
+If this frontier node has not been visited before,
+a reward is computed with the search heuristic.
+Otherwise, the node is expanded and one of its children is visited.
+Terminal nodes (i.e.\@ nodes which cannot be expanded) are given a reward from the reward
+function.
+After the visit, the reward is propagated back up the tree towards the root node,
+and the visit count of all nodes in the path is incremented by 1.
+This whole procedure is used to implement step~\ref{general retrosynthesis alg: node selection}
+of algorithm~\ref{alg:general-retrosynthesis-search}.
+Further details of MCTS can be found in \citet{segler2018planning}
+or in the paper accompanying the AiZynthFinder package \citep{genheden2020aizynthfinder}.
+
+\subsection{Breadth-first search}
+
+Breath-first search 
+simply keeps a first-in-first-out queue of frontier nodes,
+and expands them in order.
+Unlike retro* or MCTS, it does not use a search heuristic to guide the search.
+For this reason, it can be thought of as a ``naive'' or ``uninformed'' algorithm,
+and is mainly useful as a simple baseline.
